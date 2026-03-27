@@ -1,0 +1,30 @@
+{
+  "name": "@guardian/mobile-pwa",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern",
+    "test": "vitest run tests --environment jsdom",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@guardian/shared-ui": "*",
+    "html5-qrcode": "^2.3.8",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "@testing-library/react": "^16.3.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.2.0",
+    "vite-plugin-pwa": "^0.19.0",
+    "vitest": "^2.1.9"
+  }
+}

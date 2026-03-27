@@ -1,0 +1,85 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: guardian-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: guardiangate
+      POSTGRES_USER: ggadmin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-super_secret_pg_password_change_in_production}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - guardian-network
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: guardian-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://ggadmin:${POSTGRES_PASSWORD:-super_secret_pg_password_change_in_production}@postgres:5432/guardiangate?schema=public
+      - JWT_SECRET=${JWT_SECRET:-super_secret_key_change_in_production}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-super_secret_refresh_key_change_in_production}
+      - QR_SECRET=${QR_SECRET:-qr_signing_secret_key_change_in_production}
+      - FRONTEND_URL=http://localhost:8080
+    depends_on:
+      - postgres
+    networks:
+      - guardian-network
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: guardian-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    networks:
+      - guardian-network
+
+  kiosk:
+    build:
+      context: ./apps/kiosk
+      dockerfile: Dockerfile
+    container_name: guardian-kiosk
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
+    networks:
+      - guardian-network
+
+  mobile-pwa:
+    build:
+      context: ./apps/mobile-pwa
+      dockerfile: Dockerfile
+    container_name: guardian-pwa
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    depends_on:
+      - api
+    networks:
+      - guardian-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  guardian-network:
+    driver: bridge

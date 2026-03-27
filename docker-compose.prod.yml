@@ -1,0 +1,68 @@
+version: "3.8"
+
+# Production Docker Compose Configuration
+# Use this for production deployments with optimized settings
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: guardian-mongodb-prod
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data-prod:/data/db
+      - mongo-config:/data/configdb
+    environment:
+      - MONGO_INITDB_DATABASE=guardian-gate
+      # Uncomment and set for production with authentication
+      # - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
+      # - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    networks:
+      - guardian-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/guardian-gate --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./services/api
+      dockerfile: Dockerfile
+    container_name: guardian-api-prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/guardian-gate
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - QR_SECRET=${QR_SECRET}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - guardian-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mongo-data-prod:
+    driver: local
+  mongo-config:
+    driver: local
+
+networks:
+  guardian-network:
+    driver: bridge

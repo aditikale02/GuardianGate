@@ -1,0 +1,104 @@
+{
+  "startedAt": "2026-03-25T18:52:27.846Z",
+  "finishedAt": "2026-03-25T18:52:28.573Z",
+  "baseUrl": "http://localhost:3000",
+  "allPassed": true,
+  "summary": [
+    {
+      "name": "health",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "admin_page",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "kiosk_page",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "mobile_page",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "admin_web_login",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "admin_me",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "dashboard_overview",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "admin_mobile_role_gate",
+      "status": 403,
+      "expected": 403,
+      "pass": true
+    },
+    {
+      "name": "student_mobile_login",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "guard_kiosk_login",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "gate_token",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "scan_submit",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "scan_replay",
+      "status": 400,
+      "expected": 400,
+      "pass": true
+    },
+    {
+      "name": "refresh",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "logout",
+      "status": 200,
+      "expected": 200,
+      "pass": true
+    },
+    {
+      "name": "refresh_after_logout",
+      "status": 401,
+      "expected": 401,
+      "pass": true
+    }
+  ]
+}

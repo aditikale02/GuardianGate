@@ -1,0 +1,699 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  STUDENT
+  WARDEN
+  DOCTOR
+  MESS_MANAGER
+  MAINTENANCE_STAFF
+  HOUSEKEEPING_STAFF
+  SECURITY_GUARD
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  TRIPLE
+  DORMITORY
+}
+
+enum RoomStatus {
+  ACTIVE
+  UNDER_MAINTENANCE
+  CLOSED
+}
+
+enum EntryAction {
+  ENTRY
+  EXIT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum MedicalUrgency {
+  NORMAL
+  URGENT
+  EMERGENCY
+}
+
+enum MedicalStatus {
+  OPEN
+  ASSIGNED
+  RESOLVED
+  ESCALATED
+}
+
+enum ParcelStatus {
+  RECEIVED
+  NOTIFIED
+  PICKUP_REQUESTED
+  COLLECTED
+}
+
+enum MaintenanceCategory {
+  ELECTRICAL
+  PLUMBING
+  FURNITURE
+  CIVIL
+  OTHER
+}
+
+enum HousekeepingCategory {
+  ROOM_CLEANING
+  BATHROOM
+  CORRIDOR
+  COMMON_AREA
+  OTHER
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  AWAITING_PARTS
+  RESOLVED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  ON_LEAVE
+  LATE_RETURN
+  UNVERIFIED
+}
+
+enum NotificationType {
+  LEAVE_APPROVAL
+  LEAVE_REJECTION
+  GUEST_APPROVAL
+  GUEST_REJECTION
+  MEDICAL_UPDATE
+  PARCEL_ARRIVED
+  PARCEL_COLLECTED
+  EMERGENCY_ALERT
+  NOTICE
+  PAYMENT_DUE
+  MAINTENANCE_UPDATE
+  HOUSEKEEPING_UPDATE
+  GENERAL
+}
+
+enum AlertPriority {
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum ScanValidationStatus {
+  SUCCESS
+  INVALID_TOKEN
+  EXPIRED_TOKEN
+  OUT_OF_RANGE
+  SESSION_ERROR
+}
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  username      String   @unique
+  email         String   @unique
+  password_hash String
+  role          Role
+  full_name     String
+  phone         String?
+  is_active     Boolean  @default(true)
+  first_login   Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  student               Student?
+  warden_finalizations  AttendanceRecord[]      @relation("VerifiedByWarden")
+  notifications         Notification[]          @relation("RecipientNotifications")
+  sent_notifications    Notification[]          @relation("SenderNotifications")
+  audit_logs            AuditLog[]              @relation("UserAuditLogs")
+  email_logs            EmailLog[]
+  emergency_alerts      EmergencyNotification[]
+  notices               Notice[]
+  events                Event[]
+  doctor_cases          MedicalRequest[]        @relation("DoctorCases")
+  parcels_delivered     ParcelRecord[]          @relation("DeliveredBy")
+
+  @@index([role])
+  @@index([email])
+}
+
+// ─────────────────────────────────────────────
+// STUDENT PROFILE
+// ─────────────────────────────────────────────
+
+model Student {
+  id                       String      @id @default(uuid())
+  user_id                  String      @unique
+  hostel_id                String      @unique
+  enrollment_no            String      @unique
+  department               String
+  year_of_study            Int
+  date_of_birth            DateTime?
+  profile_pic_url          String?
+  permanent_address        String?
+  city                     String?
+  state                    String?
+  aadhaar_no               String?
+  college_id_no            String?
+  guardian_name            String?
+  guardian_phone           String?
+  guardian_relation        String?
+  guardian_email           String?
+  emergency_contact_name   String?
+  emergency_contact_phone  String?
+  blood_group              String?
+  known_allergies          String?
+  medical_conditions       String?
+  current_status           EntryAction @default(ENTRY)
+  last_scan_at             DateTime?
+  created_at               DateTime    @default(now())
+  updated_at               DateTime    @updatedAt
+
+  user                  User                  @relation(fields: [user_id], references: [id])
+  room_allocation       RoomAllocation?
+  qr_tokens             QrToken[]
+  entry_exit_logs       EntryExitLog[]
+  leave_requests        NightLeaveRequest[]
+  guest_requests        GuestRequest[]
+  medical_requests      MedicalRequest[]      @relation("StudentMedical")
+  parcel_records        ParcelRecord[]
+  fee_records           FeeRecord[]
+  payments              Payment[]
+  maintenance_requests  MaintenanceRequest[]
+  housekeeping_requests HousekeepingRequest[]
+  suggestions           Suggestion[]
+  food_ratings          FoodRating[]
+  attendance_records    AttendanceRecord[]
+
+  @@index([enrollment_no])
+  @@index([hostel_id])
+  @@index([current_status])
+}
+
+// ─────────────────────────────────────────────
+// HOSTEL STRUCTURE
+// ─────────────────────────────────────────────
+
+model HostelBlock {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+
+  floors Floor[]
+}
+
+model Floor {
+  id           String   @id @default(uuid())
+  block_id     String
+  floor_number Int
+  name         String?
+  created_at   DateTime @default(now())
+
+  block HostelBlock @relation(fields: [block_id], references: [id])
+  rooms Room[]
+
+  @@unique([block_id, floor_number])
+}
+
+model Room {
+  id                String     @id @default(uuid())
+  floor_id          String
+  room_number       String
+  room_type         RoomType   @default(DOUBLE)
+  capacity          Int        @default(2)
+  current_occupancy Int        @default(0)
+  status            RoomStatus @default(ACTIVE)
+  created_at        DateTime   @default(now())
+  updated_at        DateTime   @updatedAt
+
+  floor                 Floor                 @relation(fields: [floor_id], references: [id])
+  allocations           RoomAllocation[]
+  maintenance_requests  MaintenanceRequest[]
+  housekeeping_requests HousekeepingRequest[]
+
+  @@unique([floor_id, room_number])
+  @@index([status])
+}
+
+model RoomAllocation {
+  id           String    @id @default(uuid())
+  student_id   String    @unique
+  room_id      String
+  bed_number   Int
+  allocated_at DateTime  @default(now())
+  vacated_at   DateTime?
+  is_active    Boolean   @default(true)
+  allocated_by String?
+
+  student Student @relation(fields: [student_id], references: [id])
+  room    Room    @relation(fields: [room_id], references: [id])
+
+  @@index([room_id])
+  @@index([is_active])
+}
+
+// ─────────────────────────────────────────────
+// QR & ENTRY/EXIT
+// ─────────────────────────────────────────────
+
+model QrToken {
+  id          String   @id @default(uuid())
+  student_id  String
+  token_hash  String   @unique
+  issued_at   DateTime @default(now())
+  expires_at  DateTime
+  is_used     Boolean  @default(false)
+
+  student         Student        @relation(fields: [student_id], references: [id])
+  entry_exit_logs EntryExitLog[]
+
+  @@index([student_id])
+  @@index([expires_at])
+}
+
+model EntryExitLog {
+  id                 String               @id @default(uuid())
+  student_id         String
+  qr_token_id        String?
+  action_type        EntryAction
+  timestamp          DateTime             @default(now())
+  latitude           Float?
+  longitude          Float?
+  distance_from_gate Float?
+  validation_status  ScanValidationStatus @default(SUCCESS)
+  failure_reason     String?
+  gate_id            String?
+
+  student   Student  @relation(fields: [student_id], references: [id])
+  qr_token  QrToken? @relation(fields: [qr_token_id], references: [id])
+
+  @@index([student_id])
+  @@index([timestamp])
+  @@index([action_type])
+}
+
+// ─────────────────────────────────────────────
+// LEAVE REQUESTS
+// ─────────────────────────────────────────────
+
+model NightLeaveRequest {
+  id            String        @id @default(uuid())
+  student_id    String
+  reason        String
+  destination   String
+  departure_at  DateTime
+  return_at     DateTime
+  status        RequestStatus @default(PENDING)
+  warden_remark String?
+  reviewed_by   String?
+  reviewed_at   DateTime?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  student            Student            @relation(fields: [student_id], references: [id])
+  attendance_records AttendanceRecord[]
+
+  @@index([student_id])
+  @@index([status])
+  @@index([departure_at])
+}
+
+// ─────────────────────────────────────────────
+// GUEST REGISTRATION
+// ─────────────────────────────────────────────
+
+model GuestRequest {
+  id                String        @id @default(uuid())
+  student_id        String
+  guest_name        String
+  guest_phone       String?
+  relationship      String
+  purpose           String?
+  expected_visit_at DateTime
+  expected_duration Int
+  status            RequestStatus @default(PENDING)
+  warden_remark     String?
+  reviewed_by       String?
+  reviewed_at       DateTime?
+  checked_in_at     DateTime?
+  checked_out_at    DateTime?
+  created_at        DateTime      @default(now())
+
+  student Student @relation(fields: [student_id], references: [id])
+
+  @@index([student_id])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// MEDICAL
+// ─────────────────────────────────────────────
+
+model MedicalRequest {
+  id           String         @id @default(uuid())
+  student_id   String
+  symptoms     String
+  urgency      MedicalUrgency @default(NORMAL)
+  status       MedicalStatus  @default(OPEN)
+  doctor_id    String?
+  doctor_notes String?
+  prescription String?
+  escalated_at DateTime?
+  resolved_at  DateTime?
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @updatedAt
+
+  student Student @relation("StudentMedical", fields: [student_id], references: [id])
+  doctor  User?   @relation("DoctorCases", fields: [doctor_id], references: [id])
+
+  @@index([student_id])
+  @@index([status])
+  @@index([urgency])
+}
+
+// ─────────────────────────────────────────────
+// PARCELS
+// ─────────────────────────────────────────────
+
+model ParcelRecord {
+  id                  String       @id @default(uuid())
+  student_id          String
+  description         String
+  sender_name         String?
+  received_at         DateTime     @default(now())
+  status              ParcelStatus @default(RECEIVED)
+  pickup_requested_at DateTime?
+  collected_at        DateTime?
+  delivered_by        String?
+  student_confirmed   Boolean      @default(false)
+  warden_remark       String?
+
+  student             Student @relation(fields: [student_id], references: [id])
+  delivered_by_warden User?   @relation("DeliveredBy", fields: [delivered_by], references: [id])
+
+  @@index([student_id])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// MESS & FOOD
+// ─────────────────────────────────────────────
+
+model FoodMenu {
+  id         String   @id @default(uuid())
+  menu_date  DateTime @db.Date
+  meal_type  String
+  items      String
+  created_by String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  ratings FoodRating[]
+
+  @@unique([menu_date, meal_type])
+  @@index([menu_date])
+}
+
+model FoodRating {
+  id         String   @id @default(uuid())
+  student_id String
+  menu_id    String
+  rating     Int
+  comment    String?
+  created_at DateTime @default(now())
+
+  student Student  @relation(fields: [student_id], references: [id])
+  menu    FoodMenu @relation(fields: [menu_id], references: [id])
+
+  @@unique([student_id, menu_id])
+  @@index([menu_id])
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────────
+
+model FeeRecord {
+  id         String   @id @default(uuid())
+  student_id String
+  fee_type   String
+  amount     Decimal  @db.Decimal(10, 2)
+  due_date   DateTime
+  is_paid    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  student  Student   @relation(fields: [student_id], references: [id])
+  payments Payment[]
+
+  @@index([student_id])
+  @@index([is_paid])
+  @@index([due_date])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  student_id    String
+  fee_record_id String
+  amount_paid   Decimal  @db.Decimal(10, 2)
+  payment_date  DateTime @default(now())
+  payment_mode  String?
+  receipt_no    String?
+  recorded_by   String?
+  remarks       String?
+
+  student    Student   @relation(fields: [student_id], references: [id])
+  fee_record FeeRecord @relation(fields: [fee_record_id], references: [id])
+
+  @@index([student_id])
+  @@index([fee_record_id])
+}
+
+// ─────────────────────────────────────────────
+// MAINTENANCE & HOUSEKEEPING
+// ─────────────────────────────────────────────
+
+model MaintenanceRequest {
+  id            String              @id @default(uuid())
+  student_id    String
+  room_id       String
+  category      MaintenanceCategory @default(OTHER)
+  description   String
+  urgency       String              @default("NORMAL")
+  status        TaskStatus          @default(PENDING)
+  assigned_to   String?
+  warden_remark String?
+  resolved_at   DateTime?
+  created_at    DateTime            @default(now())
+  updated_at    DateTime            @updatedAt
+
+  student Student @relation(fields: [student_id], references: [id])
+  room    Room    @relation(fields: [room_id], references: [id])
+
+  @@index([student_id])
+  @@index([status])
+}
+
+model HousekeepingRequest {
+  id          String               @id @default(uuid())
+  student_id  String
+  room_id     String
+  category    HousekeepingCategory @default(OTHER)
+  description String
+  status      TaskStatus           @default(PENDING)
+  assigned_to String?
+  resolved_at DateTime?
+  created_at  DateTime             @default(now())
+  updated_at  DateTime             @updatedAt
+
+  student Student @relation(fields: [student_id], references: [id])
+  room    Room    @relation(fields: [room_id], references: [id])
+
+  @@index([student_id])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// SUGGESTIONS, EVENTS, NOTICES
+// ─────────────────────────────────────────────
+
+model Suggestion {
+  id           String   @id @default(uuid())
+  student_id   String
+  title        String
+  content      String
+  is_anonymous Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  student Student @relation(fields: [student_id], references: [id])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  event_date  DateTime
+  location    String?
+  created_by  String
+  created_at  DateTime @default(now())
+
+  creator User @relation(fields: [created_by], references: [id])
+}
+
+model Notice {
+  id           String   @id @default(uuid())
+  title        String
+  content      String
+  target_role  Role?
+  is_pinned    Boolean  @default(false)
+  published_at DateTime @default(now())
+  expires_at   DateTime?
+  created_by   String
+
+  creator User @relation(fields: [created_by], references: [id])
+
+  @@index([target_role])
+  @@index([published_at])
+}
+
+// ─────────────────────────────────────────────
+// EMERGENCY NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model EmergencyNotification {
+  id              String        @id @default(uuid())
+  title           String
+  message         String
+  priority        AlertPriority @default(HIGH)
+  target_block_id String?
+  target_role     Role?
+  created_by      String
+  created_at      DateTime      @default(now())
+  resolved_at     DateTime?
+
+  creator       User           @relation(fields: [created_by], references: [id])
+  notifications Notification[]
+
+  @@index([created_at])
+  @@index([priority])
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id            String           @id @default(uuid())
+  recipient_id  String
+  sender_id     String?
+  type          NotificationType
+  title         String
+  message       String
+  module_source String?
+  reference_id  String?
+  is_read       Boolean          @default(false)
+  created_at    DateTime         @default(now())
+  emergency_id  String?
+
+  recipient User                  @relation("RecipientNotifications", fields: [recipient_id], references: [id])
+  sender    User?                 @relation("SenderNotifications", fields: [sender_id], references: [id])
+  emergency EmergencyNotification? @relation(fields: [emergency_id], references: [id])
+
+  @@index([recipient_id])
+  @@index([is_read])
+  @@index([created_at])
+}
+
+// ─────────────────────────────────────────────
+// ATTENDANCE
+// ─────────────────────────────────────────────
+
+model AttendanceRecord {
+  id                       String           @id @default(uuid())
+  student_id               String
+  attendance_date          DateTime         @db.Date
+  attendance_status        AttendanceStatus
+  night_attendance_marked_at DateTime?
+  is_on_approved_leave     Boolean          @default(false)
+  leave_request_id         String?
+  entry_exit_reference     String?
+  late_return_flag         Boolean          @default(false)
+  manual_override_flag     Boolean          @default(false)
+  warden_remark            String?
+  verified_by_warden_id    String?
+  is_finalized             Boolean          @default(false)
+  finalized_at             DateTime?
+  created_at               DateTime         @default(now())
+  updated_at               DateTime         @updatedAt
+
+  student       Student            @relation(fields: [student_id], references: [id])
+  leave_request NightLeaveRequest? @relation(fields: [leave_request_id], references: [id])
+  verified_by   User?              @relation("VerifiedByWarden", fields: [verified_by_warden_id], references: [id])
+
+  @@unique([student_id, attendance_date])
+  @@index([attendance_date])
+  @@index([attendance_status])
+  @@index([is_finalized])
+}
+
+// ─────────────────────────────────────────────
+// AUDIT & EMAIL LOGS
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  user_id     String?
+  action_type String
+  target_type String?
+  target_id   String?
+  ip_address  String?
+  metadata    Json?
+  created_at  DateTime @default(now())
+
+  user User? @relation("UserAuditLogs", fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([action_type])
+  @@index([created_at])
+}
+
+model EmailLog {
+  id              String   @id @default(uuid())
+  recipient_email String
+  subject         String
+  template_type   String
+  status          String
+  failure_reason  String?
+  sent_by_user_id String?
+  sent_at         DateTime @default(now())
+
+  sent_by User? @relation(fields: [sent_by_user_id], references: [id])
+
+  @@index([recipient_email])
+  @@index([status])
+  @@index([sent_at])
+}
