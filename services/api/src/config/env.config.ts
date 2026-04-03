@@ -26,10 +26,21 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  ENABLE_ADMIN_SIGNUP: z
+    .preprocess((value) => {
+      if (typeof value === "string") {
+        return value.toLowerCase() === "true";
+      }
+      return value;
+    }, z.boolean().optional()),
+  DEFAULT_ADMIN_EMAIL: z.string().email().default("admin@guardian.com"),
+  DEFAULT_ADMIN_PASSWORD: z.string().min(8).default("Admin@123"),
   GATE_LATITUDE: z.string().transform(Number).optional(),
   GATE_LONGITUDE: z.string().transform(Number).optional(),
   GATE_RADIUS_METERS: z.string().transform(Number).default("10"),
   QR_VALIDITY_MINUTES: z.string().transform(Number).default("5"),
+  QR_ENTRY_CUTOFF_TIME: z.string().default("21:00"),
+  QR_EXIT_CUTOFF_TIME: z.string().default("22:00"),
 });
 
 const _env = envSchema.safeParse(process.env);
@@ -42,5 +53,13 @@ if (!_env.success) {
   process.exit(1);
 }
 
-export const env = _env.data;
+const hasExplicitAdminSignupFlag =
+  typeof process.env.ENABLE_ADMIN_SIGNUP === "string";
+
+export const env = {
+  ..._env.data,
+  ENABLE_ADMIN_SIGNUP: hasExplicitAdminSignupFlag
+    ? Boolean(_env.data.ENABLE_ADMIN_SIGNUP)
+    : _env.data.NODE_ENV !== "production",
+};
 export type Env = z.infer<typeof envSchema>;

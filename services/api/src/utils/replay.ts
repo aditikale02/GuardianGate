@@ -1,15 +1,15 @@
-const usedNonces = new Map<string, number>();
+const usedReplayKeys = new Map<string, number>();
 
 const cleanupExpiredNonces = () => {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  for (const [nonce, exp] of usedNonces.entries()) {
+  for (const [replayKey, exp] of usedReplayKeys.entries()) {
     if (exp <= nowSeconds) {
-      usedNonces.delete(nonce);
+      usedReplayKeys.delete(replayKey);
     }
   }
 };
 
-export const consumeNonce = (nonce: string, exp: number): boolean => {
+export const consumeNonce = (replayKey: string, exp: number): boolean => {
   cleanupExpiredNonces();
 
   const nowSeconds = Math.floor(Date.now() / 1000);
@@ -17,10 +17,10 @@ export const consumeNonce = (nonce: string, exp: number): boolean => {
     return false;
   }
 
-  if (usedNonces.has(nonce)) {
+  if (usedReplayKeys.has(replayKey)) {
     return false;
   }
 
-  usedNonces.set(nonce, exp);
+  usedReplayKeys.set(replayKey, exp);
   return true;
 };

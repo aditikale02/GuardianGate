@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 30 50% 97%;
+    --foreground: 350 20% 20%;
+
+    --card: 30 40% 98%;
+    --card-foreground: 350 20% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 350 20% 20%;
+
+    --primary: 350 60% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 25 80% 90%;
+    --secondary-foreground: 350 30% 30%;
+
+    --muted: 30 30% 93%;
+    --muted-foreground: 350 10% 50%;
+
+    --accent: 350 40% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 25% 88%;
+    --input: 30 25% 88%;
+    --ring: 350 60% 65%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 30 40% 96%;
+    --sidebar-foreground: 350 20% 25%;
+    --sidebar-primary: 350 60% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 350 50% 92%;
+    --sidebar-accent-foreground: 350 30% 30%;
+    --sidebar-border: 30 25% 90%;
+    --sidebar-ring: 350 60% 65%;
+
+    /* Custom tokens */
+    --peach: 25 90% 88%;
+    --peach-foreground: 25 50% 30%;
+    --blush: 350 70% 92%;
+    --blush-foreground: 350 40% 35%;
+    --lavender: 280 40% 92%;
+    --lavender-foreground: 280 30% 35%;
+    --mint: 160 40% 90%;
+    --mint-foreground: 160 30% 30%;
+    --cream: 40 60% 95%;
+    --cream-foreground: 40 30% 30%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(350 60% 65% / 0.1), hsl(25 90% 88% / 0.4));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(30 40% 98%));
+    --shadow-soft: 0 4px 20px -4px hsl(350 60% 65% / 0.1);
+    --shadow-card: 0 2px 12px -2px hsl(350 60% 65% / 0.08);
+    --shadow-hover: 0 8px 30px -6px hsl(350 60% 65% / 0.15);
+  }
+
+  .dark {
+    --background: 0 0% 6%;
+    --foreground: 320 10% 90%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 320 10% 90%;
+
+    --popover: 0 0% 9%;
+    --popover-foreground: 320 10% 90%;
+
+    --primary: 330 85% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 330 30% 15%;
+    --secondary-foreground: 330 20% 85%;
+
+    --muted: 0 0% 13%;
+    --muted-foreground: 320 8% 52%;
+
+    --accent: 330 70% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 60% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 330 15% 16%;
+    --input: 330 15% 16%;
+    --ring: 330 85% 58%;
+
+    --sidebar-background: 0 0% 7%;
+    --sidebar-foreground: 320 10% 88%;
+    --sidebar-primary: 330 85% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 330 25% 14%;
+    --sidebar-accent-foreground: 320 10% 88%;
+    --sidebar-border: 330 15% 14%;
+    --sidebar-ring: 330 85% 58%;
+
+    --peach: 330 40% 14%;
+    --peach-foreground: 330 30% 80%;
+    --blush: 330 50% 16%;
+    --blush-foreground: 330 30% 82%;
+    --lavender: 280 30% 16%;
+    --lavender-foreground: 280 20% 78%;
+    --mint: 160 25% 13%;
+    --mint-foreground: 160 20% 72%;
+    --cream: 40 20% 12%;
+    --cream-foreground: 40 15% 70%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(330 85% 58% / 0.08), hsl(330 40% 14% / 0.3));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 9%), hsl(0 0% 11%));
+    --shadow-soft: 0 4px 20px -4px hsl(330 85% 58% / 0.12);
+    --shadow-card: 0 2px 12px -2px hsl(0 0% 0% / 0.3);
+    --shadow-hover: 0 8px 30px -6px hsl(330 85% 58% / 0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-hover {
+    box-shadow: var(--shadow-hover);
+  }
+  .curved-section {
+    border-radius: 2rem;
+  }
+}

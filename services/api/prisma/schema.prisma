@@ -98,6 +98,17 @@ enum AttendanceStatus {
   UNVERIFIED
 }
 
+enum Department {
+  COMPUTER_ENGINEERING
+  COMPUTER_ENGINEERING_REGIONAL
+  AIML
+  ENTC
+  CIVIL
+  IT
+  ARCHITECTURE
+  DIPLOMA
+}
+
 enum NotificationType {
   LEAVE_APPROVAL
   LEAVE_REJECTION
@@ -128,6 +139,19 @@ enum ScanValidationStatus {
   SESSION_ERROR
 }
 
+enum MissingReportStatus {
+  OPEN
+  IN_REVIEW
+  FOUND
+  CLOSED
+}
+
+enum ShiftTiming {
+  DAY
+  NIGHT
+  BOTH
+}
+
 // ─────────────────────────────────────────────
 // USERS
 // ─────────────────────────────────────────────
@@ -142,10 +166,17 @@ model User {
   phone         String?
   is_active     Boolean  @default(true)
   first_login   Boolean  @default(true)
+  created_by_admin_id String?
+  temporary_password_issued_at DateTime?
+  credentials_emailed_at DateTime?
+  credentials_email_status String?
+  last_login_at   DateTime?
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
   student               Student?
+  assigned_students     Student[]               @relation("AssignedWarden")
+  warden_profile        WardenProfile?
   warden_finalizations  AttendanceRecord[]      @relation("VerifiedByWarden")
   notifications         Notification[]          @relation("RecipientNotifications")
   sent_notifications    Notification[]          @relation("SenderNotifications")
@@ -156,9 +187,17 @@ model User {
   events                Event[]
   doctor_cases          MedicalRequest[]        @relation("DoctorCases")
   parcels_delivered     ParcelRecord[]          @relation("DeliveredBy")
+  verified_entry_exit_logs EntryExitLog[]       @relation("EntryExitVerifiedBy")
+  reviewed_night_leave_requests NightLeaveRequest[] @relation("NightLeaveReviewedBy")
+  reviewed_guest_requests GuestRequest[]        @relation("GuestReviewedBy")
+  reviewed_missing_reports MissingReport[]      @relation("MissingReportReviewedBy")
+  recorded_payments      Payment[]              @relation("PaymentRecordedBy")
+  assigned_maintenance_requests MaintenanceRequest[] @relation("MaintenanceAssignedTo")
+  assigned_housekeeping_requests HousekeepingRequest[] @relation("HousekeepingAssignedTo")
 
   @@index([role])
   @@index([email])
+  @@index([created_by_admin_id])
 }
 
 // ─────────────────────────────────────────────
@@ -170,10 +209,19 @@ model Student {
   user_id                  String      @unique
   hostel_id                String      @unique
   enrollment_no            String      @unique
-  department               String
+  department               Department
+  course_branch            String?
   year_of_study            Int
+  hostel_joining_date      DateTime?
+  assigned_warden_id       String?
+  mess_plan_enabled        Boolean     @default(true)
   date_of_birth            DateTime?
   profile_pic_url          String?
+  id_proof_url             String?
+  gate_pass_id             String?     @unique
+  qr_gate_id               String?     @unique
+  leave_balance            Int         @default(15)
+  medical_notes            String?
   permanent_address        String?
   city                     String?
   state                    String?
@@ -194,6 +242,7 @@ model Student {
   updated_at               DateTime    @updatedAt
 
   user                  User                  @relation(fields: [user_id], references: [id])
+  assigned_warden       User?                 @relation("AssignedWarden", fields: [assigned_warden_id], references: [id])
   room_allocation       RoomAllocation?
   qr_tokens             QrToken[]
   entry_exit_logs       EntryExitLog[]
@@ -208,10 +257,39 @@ model Student {
   suggestions           Suggestion[]
   food_ratings          FoodRating[]
   attendance_records    AttendanceRecord[]
+  missing_reports       MissingReport[]
 
   @@index([enrollment_no])
   @@index([hostel_id])
+  @@index([assigned_warden_id])
   @@index([current_status])
+}
+
+model WardenProfile {
+  id                            String      @id @default(uuid())
+  user_id                       String      @unique
+  warden_id                     String      @unique
+  alternate_phone               String?
+  gender                        String?
+  assigned_hostel               String
+  assigned_block                String?
+  assigned_floor                String?
+  shift_timing                  ShiftTiming @default(DAY)
+  joining_date                  DateTime?
+  experience_years              Int?
+  can_approve_leave             Boolean     @default(true)
+  can_manage_guest_entries      Boolean     @default(true)
+  can_manage_parcel_requests    Boolean     @default(true)
+  can_access_student_records    Boolean     @default(true)
+  can_send_notices              Boolean     @default(true)
+  can_handle_medical_requests   Boolean     @default(true)
+  profile_photo_url             String?
+  created_at                    DateTime    @default(now())
+  updated_at                    DateTime    @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([assigned_hostel])
 }
 
 // ─────────────────────────────────────────────
@@ -302,19 +380,41 @@ model EntryExitLog {
   qr_token_id        String?
   action_type        EntryAction
   timestamp          DateTime             @default(now())
+  scan_date          DateTime?            @db.Date
+  scan_time          String?
   latitude           Float?
   longitude          Float?
   distance_from_gate Float?
+  qr_generated_at    DateTime?
+  qr_expires_at      DateTime?
   validation_status  ScanValidationStatus @default(SUCCESS)
   failure_reason     String?
   gate_id            String?
+  verified_by_user_id String?
+  verified_by_role   Role?
+  remarks            String?
+  allowed_time       String?
+  actual_scanned_time String?
+  is_late            Boolean              @default(false)
+  is_flagged         Boolean              @default(false)
+  late_reason        String?
+  student_name_snapshot String?
+  enrollment_no_snapshot String?
+  hostel_id_snapshot String?
+  floor_number_snapshot Int?
+  room_number_snapshot String?
 
   student   Student  @relation(fields: [student_id], references: [id])
   qr_token  QrToken? @relation(fields: [qr_token_id], references: [id])
+  verified_by User?  @relation("EntryExitVerifiedBy", fields: [verified_by_user_id], references: [id])
 
   @@index([student_id])
   @@index([timestamp])
   @@index([action_type])
+  @@index([scan_date])
+  @@index([is_late])
+  @@index([is_flagged])
+  @@index([verified_by_user_id])
 }
 
 // ─────────────────────────────────────────────
@@ -336,11 +436,13 @@ model NightLeaveRequest {
   updated_at    DateTime      @updatedAt
 
   student            Student            @relation(fields: [student_id], references: [id])
+  reviewed_by_user   User?              @relation("NightLeaveReviewedBy", fields: [reviewed_by], references: [id])
   attendance_records AttendanceRecord[]
 
   @@index([student_id])
   @@index([status])
   @@index([departure_at])
+  @@index([reviewed_by])
 }
 
 // ─────────────────────────────────────────────
@@ -365,9 +467,11 @@ model GuestRequest {
   created_at        DateTime      @default(now())
 
   student Student @relation(fields: [student_id], references: [id])
+  reviewed_by_user User? @relation("GuestReviewedBy", fields: [reviewed_by], references: [id])
 
   @@index([student_id])
   @@index([status])
+  @@index([reviewed_by])
 }
 
 // ─────────────────────────────────────────────
@@ -439,6 +543,18 @@ model FoodMenu {
   @@index([menu_date])
 }
 
+model MessTimetable {
+  id             String   @id @default(uuid())
+  week_start_date DateTime @db.Date @unique
+  structured_menu Json
+  image_url      String?
+  updated_by     String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  @@index([week_start_date])
+}
+
 model FoodRating {
   id         String   @id @default(uuid())
   student_id String
@@ -488,9 +604,11 @@ model Payment {
 
   student    Student   @relation(fields: [student_id], references: [id])
   fee_record FeeRecord @relation(fields: [fee_record_id], references: [id])
+  recorded_by_user User? @relation("PaymentRecordedBy", fields: [recorded_by], references: [id])
 
   @@index([student_id])
   @@index([fee_record_id])
+  @@index([recorded_by])
 }
 
 // ─────────────────────────────────────────────
@@ -513,9 +631,11 @@ model MaintenanceRequest {
 
   student Student @relation(fields: [student_id], references: [id])
   room    Room    @relation(fields: [room_id], references: [id])
+  assignee User?  @relation("MaintenanceAssignedTo", fields: [assigned_to], references: [id])
 
   @@index([student_id])
   @@index([status])
+  @@index([assigned_to])
 }
 
 model HousekeepingRequest {
@@ -532,9 +652,11 @@ model HousekeepingRequest {
 
   student Student @relation(fields: [student_id], references: [id])
   room    Room    @relation(fields: [room_id], references: [id])
+  assignee User?  @relation("HousekeepingAssignedTo", fields: [assigned_to], references: [id])
 
   @@index([student_id])
   @@index([status])
+  @@index([assigned_to])
 }
 
 // ─────────────────────────────────────────────
@@ -550,6 +672,30 @@ model Suggestion {
   created_at   DateTime @default(now())
 
   student Student @relation(fields: [student_id], references: [id])
+}
+
+model MissingReport {
+  id               String              @id @default(uuid())
+  student_id       String
+  title            String
+  description      String
+  location         String?
+  last_seen_at     DateTime?
+  image_url        String?
+  status           MissingReportStatus @default(OPEN)
+  resolution_notes String?
+  reviewed_by      String?
+  resolved_at      DateTime?
+  created_at       DateTime            @default(now())
+  updated_at       DateTime            @updatedAt
+
+  student Student @relation(fields: [student_id], references: [id])
+  reviewed_by_user User? @relation("MissingReportReviewedBy", fields: [reviewed_by], references: [id])
+
+  @@index([student_id])
+  @@index([status])
+  @@index([created_at])
+  @@index([reviewed_by])
 }
 
 model Event {

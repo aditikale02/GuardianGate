@@ -5,8 +5,6 @@ This guide details the steps to deploy GuardianGate in a production environment.
 ## Prerequisites
 
 - Node.js (v18+)
-- MongoDB (Running instance)
-- Camera hardware (for PWA scanning)
 - Modern browser (Chrome/Edge recommended)
 
 ## Local Development Setup
@@ -23,7 +21,7 @@ This guide details the steps to deploy GuardianGate in a production environment.
    ```env
    NODE_ENV=development
    PORT=3000
-   MONGODB_URI=mongodb://localhost:27017/guardiangate
+   DATABASE_URL=postgresql://ggadmin:your_password@127.0.0.1:5432/guardiangate?schema=public
    JWT_SECRET=your_secret_key
    ```
 
@@ -44,14 +42,11 @@ GuardianGate is containerized for easy deployment using Docker.
 
 2. **Network Topology**:
    - The API server facilitates all traffic.
-   - Frontends are served through the API proxy or static hosting.
 
 ## Security Checklist
 
 - [ ] Change default `JWT_SECRET`.
-- [ ] Ensure MongoDB is authenticated and firewalled.
 - [ ] Set `NODE_ENV=production`.
-- [ ] Use HTTPS for camera access (Requirement for `html5-qrcode`).
 
 ---
 

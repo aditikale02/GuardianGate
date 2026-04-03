@@ -8,7 +8,7 @@ const router = Router();
 router.get(
 	"/gate-token",
 	authenticateToken,
-	authorizeRole([Role.SECURITY_GUARD, Role.ADMIN, Role.WARDEN]),
+	authorizeRole([Role.ADMIN, Role.WARDEN]),
 	getGateToken,
 );
 

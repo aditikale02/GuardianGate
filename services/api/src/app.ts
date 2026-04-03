@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import path from "path";
 import { rateLimit } from "express-rate-limit";
 import compression from "compression";
 import cookieParser from "cookie-parser";
@@ -10,9 +9,10 @@ import authRoutes from "./routes/auth.routes";
 import qrRoutes from "./routes/qr.routes";
 import scanRoutes from "./routes/scan.routes";
 import dashboardRoutes from "./routes/dashboard.routes";
+import workflowsRoutes from "./routes/workflows.routes";
+import campusRoutes from "./routes/campus.routes";
+import adminRoutes from "./routes/admin.routes";
 import { attachRequestId } from "./middleware/request-id";
-import { createServer as createViteServer } from "vite";
-import fs from "fs";
 
 const app = express();
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -61,11 +61,14 @@ app.use(
   ),
 );
 
-// Rate Limiting
+// Global API limiter for non-auth routes; auth routes have dedicated auth-specific limits.
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: IS_PROD ? 100 : 1000, // Stricter in production
+  max: IS_PROD ? 600 : 3000,
   message: { message: "Too many requests, please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.path.startsWith("/v1/auth"),
 });
 app.use("/api", limiter);
 
@@ -74,6 +77,9 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/qr", qrRoutes);
 app.use("/api/v1/scan", scanRoutes);
 app.use("/api/v1/dashboard", dashboardRoutes);
+app.use("/api/v1/workflows", workflowsRoutes);
+app.use("/api/v1/campus", campusRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -83,100 +89,17 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// Frontend Applications
-if (IS_PROD) {
-  // In production, serve built assets
-  // Note: We assume the apps are built and located in their respective dist folders
-  const APPS_PATH = path.join(__dirname, "..", "..", "..", "apps");
-
-  // Web Dashboard
-  const webDist = path.resolve(APPS_PATH, "web", "dist");
-  app.use("/admin", express.static(webDist, { maxAge: "1d", etag: true }));
-  app.get("/admin/*", (_req, res) =>
-    res.sendFile(path.join(webDist, "index.html")),
-  );
-
-  // Kiosk
-  const kioskDist = path.resolve(APPS_PATH, "kiosk", "dist");
-  app.use("/kiosk", express.static(kioskDist, { maxAge: "1d", etag: true }));
-  app.get("/kiosk/*", (_req, res) =>
-    res.sendFile(path.join(kioskDist, "index.html")),
-  );
-
-  // Mobile PWA
-  const pwaDist = path.resolve(APPS_PATH, "mobile-pwa", "dist");
-  app.use("/app", express.static(pwaDist, { maxAge: "1d", etag: true }));
-  app.get("/app/*", (_req, res) =>
-    res.sendFile(path.join(pwaDist, "index.html")),
-  );
-}
-
 export const setupIntegratedDev = async (expressApp: express.Express) => {
+  void expressApp;
   if (IS_PROD) return;
-
-  console.log("🚀 Setting up integrated Vite development servers...");
-
-  const createViteInstance = async (
-    base: string,
-    rootDir: string,
-    hmrPort: number,
-  ) => {
-    const fullRoot = path.resolve(__dirname, rootDir);
-    console.log(`🔍 Instantiating Vite for ${base} at ${fullRoot}...`);
-
-    const vite = await createViteServer({
-      server: {
-        middlewareMode: true,
-        hmr: { port: hmrPort },
-      },
-      appType: "spa",
-      base,
-      root: fullRoot,
-      configFile: path.resolve(fullRoot, "vite.config.ts"),
-    });
-
-    // CRITICAL: Wrap Vite's connect middleware with a path filter.
-    // Mount at root level so Vite sees the FULL path (e.g. /admin/@vite/client),
-    // but guard so each instance only handles its own prefix.
-    // Without this guard, all three Vite instances compete and the last one wins.
-    expressApp.use((req, res, next) => {
-      const trimmedBase = base.replace(/\/$/, "");
-      if (req.path.startsWith(base) || req.path === trimmedBase) {
-        return vite.middlewares(req, res, next);
-      }
-      next();
-    });
-
-    // SPA catch-all: serve transformed index.html for all HTML requests under this prefix
-    const trimmed = base.replace(/\/$/, "");
-    expressApp.get(`${trimmed}*`, async (req, res, next) => {
-      const url = req.originalUrl;
-      // Skip asset requests (files with extensions)
-      if (/\.[^/]+$/.test(url) && !url.endsWith(".html")) return next();
-      try {
-        const indexPath = path.resolve(fullRoot, "index.html");
-        let template = fs.readFileSync(indexPath, "utf-8");
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ "Content-Type": "text/html" }).end(template);
-      } catch (e: any) {
-        vite.ssrFixStacktrace(e);
-        next(e);
-      }
-    });
-
-    console.log(`✅ Vite instantiated for ${base} (HMR Port: ${hmrPort})`);
-    return vite;
-  };
-
-  // Instantiate sequentially so middleware order is deterministic
-  await createViteInstance("/admin/", "../../../apps/web", 5173);
-  await createViteInstance("/kiosk/", "../../../apps/kiosk", 5174);
-  await createViteInstance("/app/", "../../../apps/mobile-pwa", 5175);
 };
 
-// Root redirect
+// Root endpoint
 app.get("/", (_req, res) => {
-  res.redirect("/admin/");
+  res.json({
+    message: "Guardian Gate API",
+    health: "/health",
+  });
 });
 
 // Centralized Error Handler

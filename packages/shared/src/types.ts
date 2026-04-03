@@ -8,11 +8,6 @@ export const RoleEnum = z.enum([
   "ADMIN",
   "STUDENT",
   "WARDEN",
-  "DOCTOR",
-  "MESS_MANAGER",
-  "MAINTENANCE_STAFF",
-  "HOUSEKEEPING_STAFF",
-  "SECURITY_GUARD",
 ]);
 export type Role = z.infer<typeof RoleEnum>;
 
@@ -87,6 +82,18 @@ export const AttendanceStatusEnum = z.enum([
 ]);
 export type AttendanceStatus = z.infer<typeof AttendanceStatusEnum>;
 
+export const DepartmentEnum = z.enum([
+  "Computer Engineering",
+  "Computer Engineering Regional",
+  "AIML",
+  "ENTC",
+  "Civil",
+  "IT",
+  "Architecture",
+  "Diploma",
+]);
+export type Department = z.infer<typeof DepartmentEnum>;
+
 export const NotificationTypeEnum = z.enum([
   "LEAVE_APPROVAL",
   "LEAVE_REJECTION",
@@ -139,8 +146,8 @@ export const StudentSchema = z.object({
   user_id: z.string().uuid(),
   hostel_id: z.string(),
   enrollment_no: z.string(),
-  department: z.string(),
-  year_of_study: z.number().int().min(1).max(5),
+  department: DepartmentEnum,
+  year_of_study: z.number().int().min(1).max(8),
   date_of_birth: z.date().nullable().optional(),
   profile_pic_url: z.string().url().nullable().optional(),
   current_status: EntryActionEnum.default("ENTRY"),
@@ -165,8 +172,35 @@ export const AuthResponseSchema = z.object({
 });
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
+export const ChangePasswordSchema = z.object({
+  current_password: z.string().min(6),
+  new_password: z.string().min(8).max(128),
+});
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordSchema>;
+
+export const CreateStudentUserSchema = z.object({
+  full_name: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  hostel_id: z.string().min(2),
+  enrollment_no: z.string().min(2),
+  department: DepartmentEnum,
+  year_of_study: z.number().int().min(1).max(8),
+});
+export type CreateStudentUserRequest = z.infer<typeof CreateStudentUserSchema>;
+
+export const CreateWardenUserSchema = z.object({
+  full_name: z.string().min(2),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  username: z.string().min(3).max(32).optional(),
+});
+export type CreateWardenUserRequest = z.infer<typeof CreateWardenUserSchema>;
+
 export const QRTokenSchema = z.object({
   token: z.string(),
+  exit_destination: z.string().min(2).max(120).optional(),
+  exit_note: z.string().max(300).optional(),
 });
 export type QRTokenRequest = z.infer<typeof QRTokenSchema>;
 
@@ -175,6 +209,9 @@ export const ScanResponseSchema = z.object({
   message: z.string(),
   action_type: EntryActionEnum,
   timestamp: z.string(),
+  status: z.enum(["SUCCESS", "INVALID", "EXPIRED", "REQUIRES_EXIT_DETAILS"]),
+  late_status: z.boolean().optional(),
+  flagged_status: z.boolean().optional(),
 });
 export type ScanResponse = z.infer<typeof ScanResponseSchema>;
 
@@ -183,5 +220,7 @@ export const QRCodePayloadSchema = z.object({
   iat: z.number(),
   exp: z.number(),
   nonce: z.string(),
+  generated_by_user_id: z.string().uuid().optional(),
+  generated_by_role: RoleEnum.optional(),
 });
 export type QRCodePayload = z.infer<typeof QRCodePayloadSchema>;

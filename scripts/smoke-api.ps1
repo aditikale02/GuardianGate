@@ -1,5 +1,9 @@
+param(
+  [string]$BaseUrl = 'http://localhost:3000/api/v1'
+)
+
 $ErrorActionPreference = 'Stop'
-$base = 'http://localhost:3001/api/v1'
+$base = $BaseUrl.TrimEnd('/')
 $jsonHeaders = @{ 'content-type' = 'application/json' }
 $adminSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $studentSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession

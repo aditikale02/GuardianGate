@@ -5,6 +5,7 @@ import { prisma } from "../prisma";
 import { User, Role } from "@prisma/client";
 
 const { JWT_SECRET } = env;
+const SUPPORTED_ROLES: Role[] = [Role.ADMIN, Role.STUDENT, Role.WARDEN];
 
 export interface AuthRequest extends Request {
   user?: User;
@@ -30,6 +31,11 @@ export const authenticateToken = async (
 
     if (!user || !user.is_active) {
       res.sendStatus(403);
+      return;
+    }
+
+    if (!SUPPORTED_ROLES.includes(user.role)) {
+      res.status(403).json({ message: "Role is no longer supported" });
       return;
     }
 

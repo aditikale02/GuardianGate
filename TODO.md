@@ -2,35 +2,6 @@
 
 This file tracks remaining implementation tasks after the current auth + QR + scan + dashboard baseline.
 
-## Frontend TODO
-
-### Web Dashboard (`apps/web`)
-
-- [ ] Add request trace viewer UI using `/api/v1/dashboard/request-trace` for debugging scan incidents.
-- [ ] Add filters for logs (time range, direction, gate, student).
-- [ ] Add pagination/virtualization for large live log datasets.
-- [ ] Add stronger empty/loading/error states across all dashboard cards.
-- [ ] Add session-expiry UX prompts before forced logout.
-
-### Kiosk (`apps/kiosk`)
-
-- [ ] Add gate selector UI (dynamic `gate_id`) instead of fixed `G-01`.
-- [ ] Display token expiry and refresh failure recovery actions more clearly.
-- [ ] Add connection/health indicator for API reachability.
-- [ ] Add optional fullscreen/kiosk mode helpers for deployment terminals.
-
-### Mobile PWA (`apps/mobile-pwa`)
-
-- [ ] Add graceful camera permission denied flow with retry instructions.
-- [ ] Add scan history for recent successful/failed scan attempts.
-- [ ] Add better scanner controls (toggle camera, torch where supported).
-- [ ] Improve offline/poor-network behavior messaging for scan submit failures.
-
-### Shared Frontend
-
-- [ ] Replace inline styles with a consistent shared UI component strategy.
-- [ ] Add E2E tests for critical flows (login, gate-token, scan, dashboard refresh).
-
 ## Backend TODO
 
 ### API & Domain

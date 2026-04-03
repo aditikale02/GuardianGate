@@ -9,7 +9,13 @@
     "test": "vitest run tests --environment node",
     "start": "node dist/index.js",
     "seed:admin": "ts-node scripts/seed-admin.ts",
-    "seed:parent": "ts-node scripts/seed-parent.ts"
+    "seed:test-users": "ts-node scripts/seed-test-users.ts",
+    "seed:admin-payments-demo": "ts-node scripts/seed-admin-payment-data.ts",
+    "seed:parent": "ts-node scripts/seed-parent.ts",
+    "roles:deactivate-legacy": "ts-node scripts/deactivate-legacy-roles.ts",
+    "db:apply-runtime-migrations": "ts-node scripts/apply-runtime-migrations.ts",
+    "admins:enforce-single": "ts-node scripts/enforce-single-admin.ts",
+    "admins:verify-single": "ts-node scripts/verify-admin-state.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.5.0",

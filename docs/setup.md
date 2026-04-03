@@ -52,7 +52,7 @@ Then register from API in development mode (`POST /api/v1/auth/register`) or use
 
 ## 5. Run the System
 
-### Integrated mode (recommended)
+### API mode
 
 ```bash
 npm run dev
@@ -60,18 +60,8 @@ npm run dev
 
 Open:
 
-- `http://localhost:3000/admin/`
-- `http://localhost:3000/kiosk/`
-- `http://localhost:3000/app/`
-
-### Individual workspace mode
-
-Run in separate terminals:
-
-- **API**: `npm run dev:api`
-- **Dashboard**: `npm run dev:web`
-- **Kiosk**: `npm run dev:kiosk`
-- **PWA**: `npm run dev:pwa`
+- `http://localhost:3000/`
+- `http://localhost:3000/health`
 
 ## 6. Verification
 
@@ -91,6 +81,4 @@ npm run build
 
 ## Tips
 
-- Use Chrome DevTools for PWA mobile emulation.
-- Enable camera permissions in your browser for the PWA scanner to work.
 - If auth returns DB connectivity errors, verify PostgreSQL is running and `DATABASE_URL` points to the active instance.

@@ -20,6 +20,6 @@
       "@guardian/shared": ["packages/shared/src"]
     }
   },
-  "include": ["apps/**/*", "packages/**/*", "services/**/*"],
+  "include": ["packages/**/*", "services/**/*"],
   "exclude": ["node_modules", "dist"]
 }

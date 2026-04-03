@@ -2,6 +2,8 @@ import { Router } from "express";
 import { Role } from "@prisma/client";
 import {
   getAttendance,
+  getAttendanceFloorOptions,
+  getFloorAttendance,
   getLogs,
   markAllNotificationsRead,
   markNotificationRead,
@@ -14,6 +16,7 @@ import {
   getSettings,
   getStudents,
   getWardens,
+  saveFloorAttendance,
 } from "../controllers/dashboard.controller";
 import { authenticateToken, authorizeRole } from "../middleware/auth";
 
@@ -45,6 +48,27 @@ router.get(
   authenticateToken,
   authorizeRole([Role.ADMIN, Role.WARDEN, Role.STUDENT]),
   getAttendance,
+);
+
+router.get(
+  "/attendance/floor/options",
+  authenticateToken,
+  authorizeRole([Role.ADMIN, Role.WARDEN]),
+  getAttendanceFloorOptions,
+);
+
+router.get(
+  "/attendance/floor",
+  authenticateToken,
+  authorizeRole([Role.ADMIN, Role.WARDEN]),
+  getFloorAttendance,
+);
+
+router.post(
+  "/attendance/floor/save",
+  authenticateToken,
+  authorizeRole([Role.ADMIN, Role.WARDEN]),
+  saveFloorAttendance,
 );
 
 router.get(

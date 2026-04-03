@@ -23,32 +23,6 @@ Key implemented API routes:
 - `GET /api/v1/dashboard/overview`
 - `GET /api/v1/dashboard/request-trace`
 
-### 2. Web Dashboard (`apps/web`)
-
-- **Framework**: React + Vite + TypeScript
-- **Purpose**: Admin/Warden operational dashboard
-- **Capabilities**:
-	- Auth login/session restore (`/auth/me`)
-	- Dashboard summary + logs (`/dashboard/overview`)
-	- Live updates (`scan:recorded`, `scan:invalid`)
-
-### 3. Kiosk App (`apps/kiosk`)
-
-- **Framework**: React + Vite + TypeScript
-- **Purpose**: Gate terminal for live QR token presentation
-- **Capabilities**:
-	- Kiosk role-gated login (`SECURITY_GUARD` / `ADMIN`)
-	- Auto-refreshing gate token every 30 seconds
-
-### 4. Mobile PWA (`apps/mobile-pwa`)
-
-- **Framework**: React + Vite + TypeScript
-- **Purpose**: Student scanner app
-- **Capabilities**:
-	- Student-only login and session refresh handling
-	- Camera-based scan (`html5-qrcode`)
-	- Secure scan submit and replay rejection handling
-
 ## Security Model
 
 - **Signed Gate Tokens**: QR payloads are signed and short-lived.
@@ -58,24 +32,19 @@ Key implemented API routes:
 
 ## Runtime Topology (Development)
 
-- Single Node process serves API + integrated Vite frontends.
+- Single Node process serves API.
 - Entry points:
-	- `/admin/` → web dashboard
-	- `/kiosk/` → kiosk terminal
-	- `/app/` → mobile PWA
+	- `/` → API info
 	- `/health` → service health
 
 ## Technology Stack
 
 | Layer        | Technology                     |
 | ------------ | ------------------------------ |
-| Frontend     | React, TypeScript, Vite        |
 | Backend      | Node.js, Express, TypeScript   |
 | Database     | PostgreSQL + Prisma            |
 | Realtime     | Socket.IO                      |
 | Validation   | Zod (`packages/shared`)        |
-| Mobile Scan  | `html5-qrcode`                 |
-| Kiosk QR     | `qrcode`                       |
 
 ---
 
