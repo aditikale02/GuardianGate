@@ -5,9 +5,9 @@ import { prisma } from "../prisma";
 import { validateQRToken } from "../utils/qr";
 import { consumeNonce } from "../utils/replay";
 import { AuthRequest } from "../middleware/auth";
-import { getIO } from "../socket";
 import { recordRequestAuditEvent } from "../utils/request-audit";
 import { env } from "../config/env.config";
+import { publishRealtimeEvent } from "../services/realtime.service";
 
 const mapStatus = (action: EntryAction): "ENTRY" | "EXIT" => action;
 
@@ -197,7 +197,7 @@ export const submitScan = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    getIO()?.to("dashboard:overview").emit("scan:invalid", {
+    await publishRealtimeEvent("dashboard:overview", "scan:invalid", {
       id: invalidLog.id,
       time: invalidLog.timestamp.toISOString(),
       name: invalidLog.student.user.full_name,
@@ -290,7 +290,7 @@ export const submitScan = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    getIO()?.to("dashboard:overview").emit("scan:invalid", {
+    await publishRealtimeEvent("dashboard:overview", "scan:invalid", {
       id: replayLog.id,
       time: replayLog.timestamp.toISOString(),
       name: replayLog.student.user.full_name,
@@ -379,7 +379,7 @@ export const submitScan = async (req: AuthRequest, res: Response) => {
     },
   });
 
-  getIO()?.to("dashboard:overview").emit("scan:recorded", {
+  await publishRealtimeEvent("dashboard:overview", "scan:recorded", {
     id: `scan-${now.getTime()}`,
     time: now.toISOString(),
     name: student.user.full_name,

@@ -51,10 +51,7 @@ const mapBackendRoleToUserRole = (backendRole: string): UserRole | null => {
   return null;
 };
 
-const mapUserRoleToClient = (role: UserRole): LoginClient => {
-  if (role === 'student') return 'mobile';
-  return 'web';
-};
+const mapUserRoleToClient = (_role: UserRole): LoginClient => 'web';
 
 const buildApiUrl = (path: string) => {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;

@@ -1,0 +1,17 @@
+{
+  "buildCommand": "npm run -w frontend build",
+  "outputDirectory": "frontend/dist",
+  "installCommand": "npm install",
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node@3.2.26",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/:path((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ]
+}

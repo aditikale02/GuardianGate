@@ -1,5 +1,3 @@
-import { createServer } from "http";
-import { initSocket } from "./socket";
 import app, { setupIntegratedDev } from "./app";
 import { prisma } from "./prisma";
 import { env } from "./config/env.config";
@@ -18,11 +16,7 @@ const startServer = async () => {
     // Integrate Vite dev servers if in development mode
     await setupIntegratedDev(app);
 
-    const httpServer = createServer(app);
-
-    initSocket(httpServer);
-
-    httpServer.listen(PORT, () => {
+    app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
     });
 

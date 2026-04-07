@@ -40,6 +40,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().optional(),
+  PUSHER_APP_ID: z.string().optional(),
+  PUSHER_KEY: z.string().optional(),
+  PUSHER_SECRET: z.string().optional(),
+  PUSHER_CLUSTER: z.string().optional(),
   ENABLE_ADMIN_SIGNUP: z
     .preprocess((value) => {
       if (typeof value === "string") {

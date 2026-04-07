@@ -45,7 +45,7 @@ const hasClientAccess = (role: Role, client?: "web" | "mobile" | "kiosk") => {
   }
 
   if (client === "web") {
-    return role === Role.ADMIN || role === Role.WARDEN;
+    return role === Role.ADMIN || role === Role.WARDEN || role === Role.STUDENT;
   }
 
   if (client === "mobile") {

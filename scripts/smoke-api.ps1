@@ -1,5 +1,9 @@
 param(
-  [string]$BaseUrl = 'http://localhost:3000/api/v1'
+  [string]$BaseUrl = 'http://localhost:3000/api/v1',
+  [string]$AdminEmail = 'admin@guardian.com',
+  [string]$AdminPassword = 'Admin@123',
+  [string]$StudentEmail = 'student.smoke@guardian.local',
+  [string]$StudentPassword = 'Student@123'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -8,10 +12,10 @@ $jsonHeaders = @{ 'content-type' = 'application/json' }
 $adminSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $studentSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 
-$adminEmail = 'admin.smoke@guardian.local'
-$adminPassword = 'Admin@123'
-$studentEmail = 'student.smoke@guardian.local'
-$studentPassword = 'Student@123'
+$adminEmail = $AdminEmail
+$adminPassword = $AdminPassword
+$studentEmail = $StudentEmail
+$studentPassword = $StudentPassword
 
 function Invoke-Login {
   param(
@@ -46,8 +50,7 @@ function Ensure-User {
 try {
   $adminLogin = Invoke-Login -Email $adminEmail -Password $adminPassword -Client 'web' -Session $adminSession
 } catch {
-  Ensure-User -Name 'Smoke Admin' -Email $adminEmail -Password $adminPassword -Role 'ADMIN'
-  $adminLogin = Invoke-Login -Email $adminEmail -Password $adminPassword -Client 'web' -Session $adminSession
+  throw "Admin login failed for '$adminEmail'. Provide valid -AdminEmail and -AdminPassword for this environment."
 }
 
 try {
@@ -91,7 +94,37 @@ if (-not $qr.token) { throw 'QR token generation failed.' }
 
 $scanBody = @{ token = $qr.token } | ConvertTo-Json
 $scanHeaders = @{ Authorization = "Bearer $studentAccess"; 'content-type' = 'application/json' }
-$scan = Invoke-RestMethod -Method Post -Uri "$base/scan/submit" -Headers $scanHeaders -Body $scanBody
+$scan = $null
+try {
+  $scan = Invoke-RestMethod -Method Post -Uri "$base/scan/submit" -Headers $scanHeaders -Body $scanBody
+} catch {
+  $response = $_.Exception.Response
+  if ($null -eq $response) { throw }
+
+  $body = $_.ErrorDetails.Message
+  try {
+    if (-not $body) {
+      $reader = New-Object System.IO.StreamReader($response.GetResponseStream())
+      $body = $reader.ReadToEnd()
+    }
+  } catch {}
+
+  $parsed = $null
+  if ($body) {
+    try { $parsed = $body | ConvertFrom-Json } catch {}
+  }
+
+  if ($parsed -and $parsed.requires_exit_details -eq $true) {
+    $scanBodyWithExit = @{
+      token = $qr.token
+      exit_destination = 'Smoke Test Destination'
+      exit_note = 'Smoke API validation'
+    } | ConvertTo-Json
+    $scan = Invoke-RestMethod -Method Post -Uri "$base/scan/submit" -Headers $scanHeaders -Body $scanBodyWithExit
+  } else {
+    throw
+  }
+}
 
 $traceRequestId = $scan.request_id
 if (-not $traceRequestId) { throw 'Scan response missing request_id for trace lookup.' }
