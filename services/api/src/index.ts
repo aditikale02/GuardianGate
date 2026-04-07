@@ -1,16 +1,14 @@
-import dotenv from "dotenv";
 import { createServer } from "http";
 import { initSocket } from "./socket";
-dotenv.config();
+import app, { setupIntegratedDev } from "./app";
+import { prisma } from "./prisma";
+import { env } from "./config/env.config";
 if (!process.env.PRISMA_CLIENT_ENGINE_TYPE) {
   process.env.PRISMA_CLIENT_ENGINE_TYPE = "binary";
 }
 
 const startServer = async () => {
   try {
-    const { default: app, setupIntegratedDev } = await import("./app");
-    const { prisma } = await import("./prisma");
-    const { env } = await import("./config/env.config");
     const { PORT } = env;
 
     // Test database connection

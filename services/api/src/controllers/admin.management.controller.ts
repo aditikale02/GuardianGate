@@ -5,7 +5,10 @@ import { Department, Prisma, Role, ShiftTiming } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../prisma";
 import { AuthRequest } from "../middleware/auth";
-import { sendCredentialsEmail } from "../services/email.service";
+import {
+  decryptTemporaryPassword,
+  encryptTemporaryPassword,
+} from "../utils/credentials";
 
 const DEPARTMENTS = [
   "Computer Engineering",
@@ -180,6 +183,15 @@ const generateUniqueUsername = async (seed: string) => {
   return `${normalized}${Date.now()}`;
 };
 
+const ensureUsernameAvailable = async (username: string) => {
+  const existing = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+
+  return !existing;
+};
+
 const generateUniqueWardenId = async () => {
   for (let i = 1; i <= 1000; i += 1) {
     const candidate = `WRD-${String(1000 + i)}`;
@@ -312,45 +324,20 @@ const ensureRoomForStudent = async (
   return { roomId: room.id, bedNumber: nextBed };
 };
 
-const sendCredentialsAndFormat = async (params: {
-  email: string;
-  fullName: string;
-  role: Role;
-  tempPassword: string;
-  adminId?: string;
-}) => {
-  const emailResult = await sendCredentialsEmail({
-    recipientEmail: params.email,
-    recipientName: params.fullName,
-    role: params.role,
-    temporaryPassword: params.tempPassword,
-    sentByUserId: params.adminId,
-  });
-
-  return {
-    credentials_email_sent: emailResult.sent,
-    credentials_email_error: emailResult.reason,
-    credentials_email_status: emailResult.sent ? "SENT" : "FAILED",
-    credentials_emailed_at: emailResult.sent ? new Date().toISOString() : null,
-  };
-};
-
-const persistCredentialsEmailStatus = async (
-  userId: string,
-  delivery: {
-    credentials_email_sent: boolean;
-    credentials_email_error?: string;
-    credentials_email_status: string;
-  },
-) => {
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      credentials_email_status: delivery.credentials_email_status,
-      credentials_emailed_at: delivery.credentials_email_sent ? new Date() : null,
-    },
-  });
-};
+const buildCredentialsView = (params: {
+  username: string;
+  isActive: boolean;
+  firstLogin: boolean;
+  temporaryPasswordEncrypted?: string | null;
+}) => ({
+  login_id: params.username,
+  temporary_password: params.firstLogin
+    ? decryptTemporaryPassword(params.temporaryPasswordEncrypted)
+    : null,
+  account_status: params.isActive ? "ACTIVE" : "INACTIVE",
+  password_changed: !params.firstLogin,
+  is_temporary: params.firstLogin,
+});
 
 export const listUsers = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -416,6 +403,7 @@ export const listUsers = async (req: Request, res: Response): Promise<void> => {
           role: true,
           is_active: true,
           first_login: true,
+          temporary_password_encrypted: true,
           credentials_email_status: true,
           credentials_emailed_at: true,
           last_login_at: true,
@@ -473,7 +461,18 @@ export const listUsers = async (req: Request, res: Response): Promise<void> => {
     ]);
 
     res.json({
-      users,
+      users: users.map((user) => {
+        const { temporary_password_encrypted: _temporaryPasswordEncrypted, ...safeUser } = user;
+        return {
+        ...safeUser,
+        credentials: buildCredentialsView({
+          username: user.username,
+          isActive: user.is_active,
+          firstLogin: user.first_login,
+          temporaryPasswordEncrypted: user.temporary_password_encrypted,
+        }),
+      };
+      }),
       meta: {
         total,
         page: safePage,
@@ -525,9 +524,18 @@ export const createStudentUser = async (
 
     const rawPassword = data.password?.trim() || createTemporaryPassword();
     const passwordHash = await bcrypt.hash(rawPassword, 10);
-    const username = data.username
-      ? await generateUniqueUsername(data.username)
-      : await generateUniqueUsername(data.enrollment_no || data.email.split("@")[0]);
+
+    let username: string;
+    if (data.username?.trim()) {
+      username = slugifyForUsername(data.username);
+      const available = await ensureUsernameAvailable(username);
+      if (!available) {
+        res.status(409).json({ message: "Username already exists" });
+        return;
+      }
+    } else {
+      username = await generateUniqueUsername(data.enrollment_no || data.email.split("@")[0]);
+    }
 
     const [gatePassId, qrGateId] = await Promise.all([
       generateUniqueGateId("GP"),
@@ -547,6 +555,9 @@ export const createStudentUser = async (
           is_active: data.is_active,
           created_by_admin_id: req.user?.id,
           temporary_password_issued_at: new Date(),
+          temporary_password_encrypted: encryptTemporaryPassword(rawPassword),
+          credentials_email_status: "MANUAL_HANDOVER_PENDING",
+          credentials_emailed_at: null,
         },
         select: {
           id: true,
@@ -605,20 +616,16 @@ export const createStudentUser = async (
       return user;
     });
 
-    const emailDelivery = await sendCredentialsAndFormat({
-      email: created.email,
-      fullName: created.full_name,
-      role: created.role,
-      tempPassword: rawPassword,
-      adminId: req.user?.id,
-    });
-
-    await persistCredentialsEmailStatus(created.id, emailDelivery);
-
     res.status(201).json({
       message: "Student account created",
       user: created,
-      ...emailDelivery,
+      credentials: {
+        login_id: created.username,
+        temporary_password: rawPassword,
+        account_status: data.is_active ? "ACTIVE" : "INACTIVE",
+        password_changed: false,
+        is_temporary: true,
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create student user";
@@ -655,9 +662,17 @@ export const createWardenUser = async (
       return;
     }
 
-    const username = data.username
-      ? await generateUniqueUsername(data.username)
-      : await generateUniqueUsername(data.email.split("@")[0]);
+    let username: string;
+    if (data.username?.trim()) {
+      username = slugifyForUsername(data.username);
+      const available = await ensureUsernameAvailable(username);
+      if (!available) {
+        res.status(409).json({ message: "Username already exists" });
+        return;
+      }
+    } else {
+      username = await generateUniqueUsername(data.email.split("@")[0]);
+    }
 
     const rawPassword = data.password?.trim() || createTemporaryPassword();
     const passwordHash = await bcrypt.hash(rawPassword, 10);
@@ -675,6 +690,9 @@ export const createWardenUser = async (
         is_active: data.is_active,
         created_by_admin_id: req.user?.id,
         temporary_password_issued_at: new Date(),
+        temporary_password_encrypted: encryptTemporaryPassword(rawPassword),
+        credentials_email_status: "MANUAL_HANDOVER_PENDING",
+        credentials_emailed_at: null,
         warden_profile: {
           create: {
             warden_id: wardenId,
@@ -706,20 +724,16 @@ export const createWardenUser = async (
       },
     });
 
-    const emailDelivery = await sendCredentialsAndFormat({
-      email: user.email,
-      fullName: user.full_name,
-      role: user.role,
-      tempPassword: rawPassword,
-      adminId: req.user?.id,
-    });
-
-    await persistCredentialsEmailStatus(user.id, emailDelivery);
-
     res.status(201).json({
       message: "Warden account created",
       user,
-      ...emailDelivery,
+      credentials: {
+        login_id: user.username,
+        temporary_password: rawPassword,
+        account_status: data.is_active ? "ACTIVE" : "INACTIVE",
+        password_changed: false,
+        is_temporary: true,
+      },
     });
   } catch (error) {
     console.error("Create warden user error:", error);
@@ -938,7 +952,14 @@ export const resetUserCredentials = async (
   try {
     const existing = await prisma.user.findUnique({
       where: { id: req.params.userId },
-      select: { id: true, email: true, full_name: true, role: true },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        full_name: true,
+        role: true,
+        is_active: true,
+      },
     });
 
     if (!existing) {
@@ -962,23 +983,22 @@ export const resetUserCredentials = async (
         password_hash: passwordHash,
         first_login: true,
         temporary_password_issued_at: new Date(),
+        temporary_password_encrypted: encryptTemporaryPassword(tempPassword),
+        credentials_email_status: "MANUAL_HANDOVER_PENDING",
+        credentials_emailed_at: null,
       },
     });
-
-    const emailDelivery = await sendCredentialsAndFormat({
-      email: existing.email,
-      fullName: existing.full_name,
-      role: existing.role,
-      tempPassword,
-      adminId: req.user?.id,
-    });
-
-    await persistCredentialsEmailStatus(existing.id, emailDelivery);
 
     res.json({
       message: "Credentials reset completed",
       user_id: existing.id,
-      ...emailDelivery,
+      credentials: {
+        login_id: existing.username,
+        temporary_password: tempPassword,
+        account_status: existing.is_active ? "ACTIVE" : "INACTIVE",
+        password_changed: false,
+        is_temporary: true,
+      },
     });
   } catch (error) {
     console.error("Reset credentials error:", error);

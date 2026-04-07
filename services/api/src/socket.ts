@@ -6,6 +6,7 @@ import { env } from "./config/env.config";
 import { prisma } from "./prisma";
 
 let io: Server;
+const IS_PROD = env.NODE_ENV === "production";
 
 type JwtPayload = {
   id: string;
@@ -18,8 +19,21 @@ const DASHBOARD_ROLES: Role[] = [Role.ADMIN, Role.WARDEN];
 export const initSocket = (httpServer: HttpServer): Server => {
   io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: (origin, callback) => {
+        if (!origin || !IS_PROD) {
+          callback(null, true);
+          return;
+        }
+
+        if (env.SOCKET_CORS_ORIGIN_LIST.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error("Socket origin not allowed"));
+      },
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 
@@ -52,7 +66,9 @@ export const initSocket = (httpServer: HttpServer): Server => {
   });
 
   io.on("connection", (socket: Socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+    if (!IS_PROD) {
+      console.log(`Socket connected: ${socket.id}`);
+    }
 
     const user = socket.data.user as { id: string; role: Role } | undefined;
 
@@ -63,11 +79,15 @@ export const initSocket = (httpServer: HttpServer): Server => {
     // Parents join their own room for targeted notifications
     socket.on("join:parent", (userId: string) => {
       socket.join(`parent:${userId}`);
-      console.log(`Socket ${socket.id} joined room parent:${userId}`);
+      if (!IS_PROD) {
+        console.log(`Socket ${socket.id} joined room parent:${userId}`);
+      }
     });
 
     socket.on("disconnect", () => {
-      console.log(`Socket disconnected: ${socket.id}`);
+      if (!IS_PROD) {
+        console.log(`Socket disconnected: ${socket.id}`);
+      }
     });
   });
 

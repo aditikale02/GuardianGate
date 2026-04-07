@@ -168,6 +168,7 @@ model User {
   first_login   Boolean  @default(true)
   created_by_admin_id String?
   temporary_password_issued_at DateTime?
+  temporary_password_encrypted String?
   credentials_emailed_at DateTime?
   credentials_email_status String?
   last_login_at   DateTime?

@@ -1,21 +1,38 @@
-FROM node:18-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Install workspace dependencies first for better layer caching.
 COPY package*.json ./
+COPY frontend/package.json frontend/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY services/api/package.json services/api/package.json
+RUN npm ci
 
-# Install dependencies
-RUN npm ci --only=production
+# Copy source files needed for build.
+COPY tsconfig.json tsconfig.json
+COPY packages/shared packages/shared
+COPY services/api services/api
 
-# Copy source
-COPY . .
+# Build shared workspace first, then API.
+RUN npm run build --workspace=@guardian/shared && npm run build --workspace=@guardian/api
 
-# Build TypeScript
-RUN npm run build
+FROM node:20-alpine AS runtime
 
-# Expose port
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+COPY frontend/package.json frontend/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY services/api/package.json services/api/package.json
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/packages/shared/dist packages/shared/dist
+COPY --from=builder /app/services/api/dist services/api/dist
+COPY services/api/prisma services/api/prisma
+COPY services/api/prisma.config.ts services/api/prisma.config.ts
+
 EXPOSE 3000
 
-# Start server
-CMD ["npm", "start"]
+CMD ["npm", "run", "start", "--workspace=@guardian/api"]

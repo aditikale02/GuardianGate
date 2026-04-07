@@ -15,9 +15,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@guardian/shared": ["packages/shared/src"]
+      "@guardian/shared": ["./packages/shared/src"]
     }
   },
   "include": ["packages/**/*", "services/**/*"],

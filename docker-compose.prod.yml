@@ -4,32 +4,30 @@ version: "3.8"
 # Use this for production deployments with optimized settings
 
 services:
-  mongodb:
-    image: mongo:7
-    container_name: guardian-mongodb-prod
+  postgres:
+    image: postgres:16-alpine
+    container_name: guardian-postgres-prod
     restart: always
     ports:
-      - "27017:27017"
+      - "5432:5432"
     volumes:
-      - mongo-data-prod:/data/db
-      - mongo-config:/data/configdb
+      - postgres-data-prod:/var/lib/postgresql/data
     environment:
-      - MONGO_INITDB_DATABASE=guardian-gate
-      # Uncomment and set for production with authentication
-      # - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
-      # - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+      - POSTGRES_DB=guardiangate
+      - POSTGRES_USER=ggadmin
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - guardian-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/guardian-gate --quiet
+      test: ["CMD-SHELL", "pg_isready -U ggadmin -d guardiangate"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   api:
     build:
-      context: ./services/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/api/Dockerfile
     container_name: guardian-api-prod
     restart: always
     ports:
@@ -37,12 +35,15 @@ services:
     environment:
       - PORT=3000
       - NODE_ENV=production
-      - MONGODB_URI=mongodb://mongodb:27017/guardian-gate
+      - DATABASE_URL=postgresql://ggadmin:${POSTGRES_PASSWORD}@postgres:5432/guardiangate?schema=public
       - JWT_SECRET=${JWT_SECRET}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - QR_SECRET=${QR_SECRET}
+      - ENABLE_ADMIN_SIGNUP=false
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - SOCKET_CORS_ORIGINS=${SOCKET_CORS_ORIGINS}
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
     networks:
       - guardian-network
@@ -58,9 +59,7 @@ services:
         max-file: "3"
 
 volumes:
-  mongo-data-prod:
-    driver: local
-  mongo-config:
+  postgres-data-prod:
     driver: local
 
 networks:

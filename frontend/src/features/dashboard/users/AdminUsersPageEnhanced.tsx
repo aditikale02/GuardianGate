@@ -31,6 +31,13 @@ type UserRow = {
   role: 'ADMIN' | 'STUDENT' | 'WARDEN' | string;
   is_active: boolean;
   first_login: boolean;
+  credentials?: {
+    login_id: string;
+    temporary_password: string | null;
+    account_status: 'ACTIVE' | 'INACTIVE';
+    password_changed: boolean;
+    is_temporary: boolean;
+  };
   credentials_email_status?: string | null;
   credentials_emailed_at?: string | null;
   last_login_at?: string | null;
@@ -67,8 +74,13 @@ type UsersResponse = {
 
 type ProvisionResponse = {
   message: string;
-  credentials_email_sent: boolean;
-  credentials_email_error?: string;
+  credentials: {
+    login_id: string;
+    temporary_password: string;
+    account_status: 'ACTIVE' | 'INACTIVE';
+    password_changed: boolean;
+    is_temporary: boolean;
+  };
 };
 
 type ProvisionMode = 'student' | 'warden';
@@ -266,6 +278,7 @@ const AdminUsersPageEnhanced = () => {
 
   const [formMessage, setFormMessage] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [issuedCredentials, setIssuedCredentials] = useState<ProvisionResponse['credentials'] | null>(null);
   const [createErrors, setCreateErrors] = useState<FieldErrors>({});
   const [editErrors, setEditErrors] = useState<FieldErrors>({});
 
@@ -365,17 +378,15 @@ const AdminUsersPageEnhanced = () => {
     },
     onSuccess: (data) => {
       setFormError(null);
-      setFormMessage(
-        data.credentials_email_sent
-          ? data.message
-          : `${data.message}. Email delivery failed: ${data.credentials_email_error || 'Unknown reason'}`,
-      );
+      setFormMessage(data.message);
+      setIssuedCredentials(data.credentials);
       toast.success(data.message);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       queryClient.invalidateQueries({ queryKey: ['warden-options'] });
     },
     onError: (error: unknown) => {
       setFormMessage(null);
+      setIssuedCredentials(null);
       const message = error instanceof Error ? error.message : 'Unable to create user';
       setFormError(message);
       toast.error('Create account failed', { description: message });
@@ -424,7 +435,8 @@ const AdminUsersPageEnhanced = () => {
       });
       return parseJsonOrThrow<ProvisionResponse>(response, 'Failed to reset credentials');
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      setIssuedCredentials(data.credentials);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       toast.success('Credentials reissued');
       setConfirmState(null);
@@ -452,6 +464,7 @@ const AdminUsersPageEnhanced = () => {
     event.preventDefault();
     setFormMessage(null);
     setFormError(null);
+    setIssuedCredentials(null);
 
     const nextErrors: FieldErrors = {};
     if (mode === 'student') {
@@ -732,6 +745,15 @@ const AdminUsersPageEnhanced = () => {
 
         {formMessage ? <p className="mt-3 text-sm text-primary">{formMessage}</p> : null}
         {formError ? <p className="mt-3 text-sm text-destructive">{formError}</p> : null}
+        {issuedCredentials ? (
+          <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+            <p className="font-semibold text-foreground">Generated credentials (share offline)</p>
+            <p className="text-muted-foreground">Login ID: {issuedCredentials.login_id}</p>
+            <p className="text-muted-foreground">Temporary password: {issuedCredentials.temporary_password}</p>
+            <p className="text-muted-foreground">Account status: {issuedCredentials.account_status}</p>
+            <p className="text-muted-foreground">Password changed: {issuedCredentials.password_changed ? 'YES' : 'NO'}</p>
+          </div>
+        ) : null}
       </div>
 
       {editing ? (
@@ -876,6 +898,10 @@ const AdminUsersPageEnhanced = () => {
                   </td>
                   <td className="px-3 py-3"><Badge className={`rounded-full text-xs ${statusBadgeClass(user.is_active)}`}>{user.is_active ? 'ACTIVE' : 'INACTIVE'}</Badge></td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">
+                    <p>Login ID: {user.credentials?.login_id || user.username}</p>
+                    <p>Temporary Password: {user.credentials?.temporary_password || '--'}</p>
+                    <p>Account Status: {user.credentials?.account_status || (user.is_active ? 'ACTIVE' : 'INACTIVE')}</p>
+                    <p>Password Changed: {user.credentials?.password_changed ? 'YES' : 'NO'}</p>
                     <p>First Login: {user.first_login ? 'YES' : 'NO'}</p>
                     <p>Last Login: {user.last_login_at ? new Date(user.last_login_at).toLocaleString() : '--'}</p>
                   </td>
@@ -888,7 +914,7 @@ const AdminUsersPageEnhanced = () => {
                       ) : null}
                       {user.role !== 'ADMIN' ? (
                         <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setConfirmState({ kind: 'resend', user })}>
-                          Resend credentials
+                          Reset temporary credentials
                         </Button>
                       ) : null}
                       <Button size="sm" variant="outline" className="rounded-lg" onClick={() => setConfirmState({ kind: 'toggle', user, nextActive: !user.is_active })}>
@@ -921,12 +947,12 @@ const AdminUsersPageEnhanced = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {confirmState?.kind === 'toggle' ? `${confirmState.nextActive ? 'Activate' : 'Deactivate'} user` : 'Resend credentials'}
+              {confirmState?.kind === 'toggle' ? `${confirmState.nextActive ? 'Activate' : 'Deactivate'} user` : 'Reset temporary credentials'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {confirmState?.kind === 'toggle'
                 ? `Are you sure you want to ${confirmState.nextActive ? 'activate' : 'deactivate'} ${confirmState.user.full_name}?`
-                : `Resending credentials for ${confirmState?.user.full_name} will generate a new temporary password.`}
+                : `Resetting credentials for ${confirmState?.user.full_name} will generate a new temporary password for manual handover.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

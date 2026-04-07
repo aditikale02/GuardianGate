@@ -101,6 +101,10 @@ const statements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "MessTimetable_week_start_date_key" ON "MessTimetable"("week_start_date");`,
   `CREATE INDEX IF NOT EXISTS "MessTimetable_week_start_date_idx" ON "MessTimetable"("week_start_date");`,
   `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "last_login_at" TIMESTAMP(3);`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "created_by_admin_id" TEXT;`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "temporary_password_issued_at" TIMESTAMP(3);`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "credentials_emailed_at" TIMESTAMP(3);`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "credentials_email_status" TEXT;`,
   `ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "course_branch" TEXT;`,
   `ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "hostel_joining_date" TIMESTAMP(3);`,
   `ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "assigned_warden_id" TEXT;`,
@@ -195,6 +199,8 @@ const statements = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "WardenProfile_user_id_key" ON "WardenProfile"("user_id");`,
   `CREATE UNIQUE INDEX IF NOT EXISTS "WardenProfile_warden_id_key" ON "WardenProfile"("warden_id");`,
   `CREATE INDEX IF NOT EXISTS "WardenProfile_assigned_hostel_idx" ON "WardenProfile"("assigned_hostel");`,
+  `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "temporary_password_encrypted" TEXT;`,
+  `CREATE INDEX IF NOT EXISTS "User_created_by_admin_id_idx" ON "User"("created_by_admin_id");`,
 ];
 
 const run = async () => {

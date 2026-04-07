@@ -107,24 +107,24 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     const now = new Date();
-    await prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: { last_login_at: now },
     });
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    const accessToken = generateAccessToken(updatedUser);
+    const refreshToken = generateRefreshToken(updatedUser);
 
     setRefreshCookie(res, refreshToken);
 
     res.json({
       access_token: accessToken,
       user: {
-        id: user.id,
-        name: user.full_name,
-        email: user.email,
-        role: user.role,
-        first_login: user.first_login,
+        id: updatedUser.id,
+        name: updatedUser.full_name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        first_login: updatedUser.first_login,
       },
     });
   } catch (error) {
@@ -205,6 +205,9 @@ export const changePassword = async (
       data: {
         password_hash: newHash,
         first_login: false,
+        temporary_password_encrypted: null,
+        credentials_email_status: "PASSWORD_CHANGED",
+        credentials_emailed_at: null,
       },
     });
 

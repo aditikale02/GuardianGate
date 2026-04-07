@@ -12,6 +12,7 @@ build/
 
 # Environment variables
 .env
+.env.*
 .env.local
 .env.production
 
@@ -40,6 +41,10 @@ temp/
 
 # Docker
 .dockerignore
+
+# Vercel / Supabase local artifacts
+.vercel/
+supabase/.temp/
 
 # MongoDB
 data/

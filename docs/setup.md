@@ -40,15 +40,17 @@ cd ../..
 
 ## 4. Demo Users
 
-This repo does not currently include a stable Prisma seed command for demo users.
-
-For local functional testing, create users via:
+Seed deterministic demo credentials:
 
 ```bash
-npm run dev
+npm run seed:test-users --workspace=@guardian/api
 ```
 
-Then register from API in development mode (`POST /api/v1/auth/register`) or use existing local test bootstrap scripts if available in your environment.
+Default credentials created/updated by the seed script:
+
+- ADMIN: `admin@guardian.com / Admin@123`
+- WARDEN: `warden.test@guardian.com / Warden@123`
+- STUDENT: `student.test@guardian.com / Student@123`
 
 ## 5. Run the System
 
@@ -56,6 +58,14 @@ Then register from API in development mode (`POST /api/v1/auth/register`) or use
 
 ```bash
 npm run dev
+```
+
+### Frontend mode
+
+Create `frontend/.env` from `frontend/.env.example` if needed, then run:
+
+```bash
+npm run dev:frontend
 ```
 
 Open:

@@ -1,9 +1,11 @@
 import bcrypt from "bcryptjs";
 import { Role } from "@prisma/client";
 import "../src/config/env.config";
+import { env } from "../src/config/env.config";
 import { prisma } from "../src/prisma";
 
 const TEST_CREDENTIALS = {
+  adminEmail: env.DEFAULT_ADMIN_EMAIL,
   adminPassword: "Admin@123",
   wardenEmail: "warden.test@guardian.com",
   wardenPassword: "Warden@123",
@@ -143,16 +145,17 @@ const nextUniqueStudentField = async (
 
 const seedAdmin = async () => {
   const hash = await bcrypt.hash(TEST_CREDENTIALS.adminPassword, 10);
-  const existingAdmin = await prisma.user.findFirst({
-    where: { role: Role.ADMIN },
-    orderBy: { created_at: "asc" },
-    select: { id: true, email: true, username: true, full_name: true },
+  const existingDefaultAdmin = await prisma.user.findUnique({
+    where: { email: TEST_CREDENTIALS.adminEmail },
+    select: { id: true, email: true },
   });
 
-  if (existingAdmin) {
+  if (existingDefaultAdmin) {
     await prisma.user.update({
-      where: { id: existingAdmin.id },
+      where: { id: existingDefaultAdmin.id },
       data: {
+        full_name: "Test Admin",
+        role: Role.ADMIN,
         password_hash: hash,
         first_login: false,
         is_active: true,
@@ -160,7 +163,33 @@ const seedAdmin = async () => {
     });
 
     return {
-      email: existingAdmin.email,
+      email: TEST_CREDENTIALS.adminEmail,
+      password: TEST_CREDENTIALS.adminPassword,
+      created: false,
+    };
+  }
+
+  const anyAdmin = await prisma.user.findFirst({
+    where: { role: Role.ADMIN },
+    orderBy: { created_at: "asc" },
+    select: { id: true },
+  });
+
+  if (anyAdmin) {
+    await prisma.user.update({
+      where: { id: anyAdmin.id },
+      data: {
+        full_name: "Test Admin",
+        email: TEST_CREDENTIALS.adminEmail,
+        role: Role.ADMIN,
+        password_hash: hash,
+        first_login: false,
+        is_active: true,
+      },
+    });
+
+    return {
+      email: TEST_CREDENTIALS.adminEmail,
       password: TEST_CREDENTIALS.adminPassword,
       created: false,
     };
@@ -171,7 +200,7 @@ const seedAdmin = async () => {
     data: {
       full_name: "Test Admin",
       username,
-      email: "admin.test@guardian.com",
+      email: TEST_CREDENTIALS.adminEmail,
       password_hash: hash,
       role: Role.ADMIN,
       is_active: true,

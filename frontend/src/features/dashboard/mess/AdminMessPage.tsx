@@ -57,24 +57,23 @@ const blankTimetable = (): TimetableShape => ({
   sunday: { breakfast: [], lunch: [], snacks: [], dinner: [] },
 });
 
+const blankDraftStructured = (): Record<DayKey, Record<MealKey, string>> => ({
+  monday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+  tuesday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+  wednesday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+  thursday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+  friday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+  saturday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+  sunday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
+});
+
 const mealColors: Record<string, string> = { breakfast: 'bg-peach', lunch: 'bg-mint', snacks: 'bg-lavender', dinner: 'bg-blush' };
 
 const AdminMessPage = () => {
   const queryClient = useQueryClient();
   const [weekStartDate, setWeekStartDate] = useState('');
   const [imageUrl, setImageUrl] = useState('');
-  const [draftStructured, setDraftStructured] = useState<Record<DayKey, Record<MealKey, string>>>(() => {
-    const rows = blankTimetable();
-    return {
-      monday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-      tuesday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-      wednesday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-      thursday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-      friday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-      saturday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-      sunday: { breakfast: '', lunch: '', snacks: '', dinner: '' },
-    };
-  });
+  const [draftStructured, setDraftStructured] = useState<Record<DayKey, Record<MealKey, string>>>(() => blankDraftStructured());
 
   const { data: timetableData, isLoading: menuLoading, error: menuError } = useQuery({
     queryKey: ['admin-mess-timetable'],
@@ -108,7 +107,7 @@ const AdminMessPage = () => {
     setWeekStartDate(timetableData.week_start_date);
     setImageUrl(timetableData.image_url || '');
 
-    const next = { ...draftStructured };
+    const next = blankDraftStructured();
     for (const day of dayLabels) {
       for (const meal of mealKeys) {
         next[day.key][meal] = (timetableData.structured_menu?.[day.key]?.[meal] || []).join(', ');

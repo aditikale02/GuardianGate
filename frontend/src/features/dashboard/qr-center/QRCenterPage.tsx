@@ -371,7 +371,11 @@ const QRCenterPage = () => {
 
     try {
       await scannerRef.current.toggleFlash();
-      const maybeIsFlashOn = (scannerRef.current as any).isFlashOn;
+      type FlashAwareScanner = {
+        isFlashOn?: () => boolean;
+      };
+
+      const maybeIsFlashOn = (scannerRef.current as unknown as FlashAwareScanner).isFlashOn;
       if (typeof maybeIsFlashOn === 'function') {
         setIsTorchOn(Boolean(maybeIsFlashOn.call(scannerRef.current)));
       } else {

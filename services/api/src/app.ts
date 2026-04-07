@@ -13,9 +13,15 @@ import workflowsRoutes from "./routes/workflows.routes";
 import campusRoutes from "./routes/campus.routes";
 import adminRoutes from "./routes/admin.routes";
 import { attachRequestId } from "./middleware/request-id";
+import { env } from "./config/env.config";
 
 const app = express();
-const IS_PROD = process.env.NODE_ENV === "production";
+const IS_PROD = env.NODE_ENV === "production";
+
+if (IS_PROD) {
+  // Ensure secure cookies and original request metadata are handled correctly behind proxies.
+  app.set("trust proxy", 1);
+}
 
 // Basic Production Hardening
 app.use(compression());
@@ -40,7 +46,24 @@ if (IS_PROD) {
 }
 app.use(
   cors({
-    origin: true, // Reflect request origin
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      if (!IS_PROD) {
+        callback(null, true);
+        return;
+      }
+
+      if (env.CORS_ORIGIN_LIST.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("CORS origin not allowed"));
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
@@ -113,11 +136,17 @@ app.use(
     const requestIdHeader = res.getHeader("x-request-id");
     const requestId =
       typeof requestIdHeader === "string" ? requestIdHeader : "-";
+    const status = err.status || 500;
+    const isInternalError = status >= 500;
+
+    const responseMessage =
+      IS_PROD && isInternalError
+        ? "Internal Server Error"
+        : err.message || "Internal Server Error";
 
     console.error(`[Error][${requestId}] ${err.message}`);
-    const status = err.status || 500;
     res.status(status).json({
-      message: err.message || "Internal Server Error",
+      message: responseMessage,
       request_id: requestId,
       ...(IS_PROD ? {} : { stack: err.stack }),
     });
