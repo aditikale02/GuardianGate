@@ -5,6 +5,22 @@ const statements = [
   `
   DO $$
   BEGIN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_constraint
+      WHERE conname = 'User_role_key'
+    ) THEN
+      ALTER TABLE "User" DROP CONSTRAINT "User_role_key";
+    END IF;
+  EXCEPTION
+    WHEN undefined_table THEN NULL;
+    WHEN undefined_object THEN NULL;
+  END $$;
+  `,
+  `DROP INDEX IF EXISTS "User_role_key";`,
+  `
+  DO $$
+  BEGIN
     CREATE TYPE "Department" AS ENUM (
       'COMPUTER_ENGINEERING',
       'COMPUTER_ENGINEERING_REGIONAL',

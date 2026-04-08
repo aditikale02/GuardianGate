@@ -39,10 +39,6 @@ let loginInFlight: Promise<SessionPayload> | null = null;
 
 const SESSION_KEY = 'gg_session';
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') || '/api/v1';
-const adminSignupFlag = String(import.meta.env.VITE_ENABLE_ADMIN_SIGNUP || '').toLowerCase();
-const ENABLE_ADMIN_SIGNUP = adminSignupFlag
-  ? adminSignupFlag === 'true'
-  : Boolean(import.meta.env.DEV);
 
 const mapBackendRoleToUserRole = (backendRole: string): UserRole | null => {
   if (backendRole === 'ADMIN') return 'admin';
@@ -291,10 +287,6 @@ export async function loginWithCredentials(role: UserRole, email: string, passwo
   } finally {
     loginInFlight = null;
   }
-}
-
-export function isAdminSignupEnabled() {
-  return ENABLE_ADMIN_SIGNUP;
 }
 
 export async function signupAdmin(fullName: string, email: string, password: string) {

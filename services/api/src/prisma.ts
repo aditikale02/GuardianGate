@@ -12,9 +12,10 @@ if (!databaseUrl) {
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  max: isServerless ? 1 : 10,
+  max: isServerless ? 1 : 3,
   idleTimeoutMillis: 10_000,
-  connectionTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 30_000,
+  keepAlive: true,
 });
 const adapter = new PrismaPg(pool);
 

@@ -274,18 +274,6 @@ export const adminSignup = async (
   }
 
   try {
-    const existingAdmin = await prisma.user.findFirst({
-      where: { role: Role.ADMIN },
-      select: { id: true, email: true },
-    });
-
-    if (existingAdmin) {
-      res.status(409).json({
-        message: "Admin account already exists. Additional admin signup is blocked.",
-      });
-      return;
-    }
-
     const existingUser = await prisma.user.findUnique({
       where: { email: parsed.data.email },
       select: { id: true },
