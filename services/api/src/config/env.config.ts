@@ -47,11 +47,19 @@ const envSchema = z.object({
   ENABLE_ADMIN_SIGNUP: z
     .preprocess((value) => {
       if (typeof value === "string") {
-        return value.toLowerCase() === "true";
+        return value.trim().toLowerCase() === "true";
       }
       return value;
     }, z.boolean().optional()),
-  DEFAULT_ADMIN_EMAIL: z.string().email().default("admin@guardian.com"),
+  DEFAULT_ADMIN_EMAIL: z
+    .preprocess((value) => {
+      if (typeof value === "string" && value.trim().length === 0) {
+        return undefined;
+      }
+      return value;
+    }, z.string().email().optional())
+    .default("admin@guardian.com")
+    .catch("admin@guardian.com"),
   DEFAULT_ADMIN_PASSWORD: z.string().min(8).default("Admin@123"),
   FRONTEND_ORIGIN: z.string().url().optional(),
   CORS_ORIGINS: z.string().optional(),

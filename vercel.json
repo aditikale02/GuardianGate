@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run -w frontend build",
+  "buildCommand": "npm run -w frontend build && npm run -w services/api build",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install",
   "functions": {
@@ -9,6 +9,10 @@
     }
   },
   "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/[...all]"
+    },
     {
       "source": "/:path((?!api/).*)",
       "destination": "/index.html"

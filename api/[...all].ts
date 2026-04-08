@@ -1,3 +1,3 @@
-import app from "../services/api/src/app";
+const app = require("../services/api/dist/services/api/src/app").default;
 
-export default app;
+module.exports = app;
