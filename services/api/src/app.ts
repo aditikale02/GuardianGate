@@ -17,18 +17,6 @@ import { env } from "./config/env.config";
 
 const app = express();
 const IS_PROD = env.NODE_ENV === "production";
-const isTrustedGuardianGateOrigin = (origin: string) => {
-  try {
-    const parsed = new URL(origin);
-    return (
-      parsed.protocol === "https:" &&
-      parsed.hostname.endsWith(".vercel.app") &&
-      parsed.hostname.includes("guardian-gate")
-    );
-  } catch {
-    return false;
-  }
-};
 
 if (IS_PROD) {
   // Ensure secure cookies and original request metadata are handled correctly behind proxies.
@@ -70,12 +58,6 @@ app.use(
       }
 
       if (env.CORS_ORIGIN_LIST.includes(origin)) {
-        callback(null, true);
-        return;
-      }
-
-      // Safety fallback for project-owned Vercel aliases/previews when env values drift.
-      if (isTrustedGuardianGateOrigin(origin)) {
         callback(null, true);
         return;
       }
