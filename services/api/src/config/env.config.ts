@@ -20,6 +20,13 @@ const parseOriginList = (value?: string) => {
   return value
     .split(",")
     .map((origin) => origin.trim())
+    .map((origin) => {
+      try {
+        return new URL(origin).origin;
+      } catch {
+        return origin;
+      }
+    })
     .filter((origin) => origin.length > 0);
 };
 
