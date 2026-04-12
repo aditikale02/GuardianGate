@@ -1,4 +1,5 @@
 import express from "express";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";

@@ -1,17 +1,15 @@
 import "./config/env.config";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_DATABASE_URL;
-const isServerless = Boolean(process.env.VERCEL);
-
 if (!databaseUrl) {
   throw new Error("DATABASE_URL or SUPABASE_DATABASE_URL is not set");
 }
 
 process.env.DATABASE_URL = databaseUrl;
-const isSupabase = databaseUrl.includes("supabase.com") || databaseUrl.includes("pooler.supabase.com");
 
 const pool = new Pool({
   connectionString: databaseUrl,

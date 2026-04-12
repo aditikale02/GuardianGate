@@ -1,9 +1,7 @@
 import app, { setupIntegratedDev } from "./app";
 import { prisma } from "./prisma";
 import { env } from "./config/env.config";
-if (!process.env.PRISMA_CLIENT_ENGINE_TYPE) {
-  process.env.PRISMA_CLIENT_ENGINE_TYPE = "binary";
-}
+
 
 const startServer = async () => {
   try {
