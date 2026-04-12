@@ -264,9 +264,15 @@ const ensureRoomForStudent = async (
   const floorNumber = parseFloorNumber(payload.floor_label);
 
   const block = await tx.hostelBlock.upsert({
-    where: { name: blockKey },
+    where: { 
+      hostel_id_name: {
+        hostel_id: payload.hostel_id,
+        name: blockKey
+      }
+    },
     update: {},
     create: {
+      hostel_id: payload.hostel_id,
       name: blockKey,
       description: `Auto-created for hostel ${payload.hostel_id}`,
     },
@@ -324,6 +330,7 @@ const ensureRoomForStudent = async (
   return { roomId: room.id, bedNumber: nextBed };
 };
 
+
 const buildCredentialsView = (params: {
   username: string;
   isActive: boolean;
@@ -339,7 +346,7 @@ const buildCredentialsView = (params: {
   is_temporary: params.firstLogin,
 });
 
-export const listUsers = async (req: Request, res: Response): Promise<void> => {
+export const listUsers = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const roleFilter = typeof req.query.role === "string" ? req.query.role.toUpperCase() : undefined;
     const activeFilter = typeof req.query.is_active === "string" ? parseBooleanFilter(req.query.is_active) : undefined;
@@ -347,7 +354,9 @@ export const listUsers = async (req: Request, res: Response): Promise<void> => {
     const page = Number.parseInt(String(req.query.page || "1"), 10);
     const pageSize = Number.parseInt(String(req.query.page_size || "100"), 10);
 
-    const where: Prisma.UserWhereInput = {};
+    const where: Prisma.UserWhereInput = {
+      hostel_id: req.user?.hostel_id,
+    };
 
     if (roleFilter && ["ADMIN", "WARDEN", "STUDENT"].includes(roleFilter)) {
       where.role = roleFilter as Role;
@@ -499,10 +508,9 @@ export const createStudentUser = async (
   const data = parsed.data;
 
   try {
-    const [existingByEmail, existingByEnrollment, existingByHostelId] = await Promise.all([
+    const [existingByEmail, existingByEnrollment] = await Promise.all([
       prisma.user.findUnique({ where: { email: data.email }, select: { id: true } }),
       prisma.student.findUnique({ where: { enrollment_no: data.enrollment_no }, select: { id: true } }),
-      prisma.student.findUnique({ where: { hostel_id: data.hostel_id }, select: { id: true } }),
     ]);
 
     if (existingByEmail) {
@@ -512,11 +520,6 @@ export const createStudentUser = async (
 
     if (existingByEnrollment) {
       res.status(409).json({ message: "Enrollment number already exists" });
-      return;
-    }
-
-    if (existingByHostelId) {
-      res.status(409).json({ message: "Hostel ID already exists" });
       return;
     }
 
@@ -553,6 +556,7 @@ export const createStudentUser = async (
           role: Role.STUDENT,
           first_login: true,
           is_active: data.is_active,
+          hostel_id: req.user?.hostel_id,
           created_by_admin_id: req.user?.id,
           temporary_password_issued_at: new Date(),
           temporary_password_encrypted: encryptTemporaryPassword(rawPassword),
@@ -597,7 +601,7 @@ export const createStudentUser = async (
       });
 
       const room = await ensureRoomForStudent(tx, {
-        hostel_id: data.hostel_id,
+        hostel_id: req.user?.hostel_id || "", 
         room_number: data.room_number,
         block_name: data.block_name,
         floor_label: data.floor_label,
@@ -686,6 +690,7 @@ export const createWardenUser = async (
         phone: normalizeMaybe(data.phone),
         password_hash: passwordHash,
         role: Role.WARDEN,
+        hostel_id: req.user?.hostel_id,
         first_login: true,
         is_active: data.is_active,
         created_by_admin_id: req.user?.id,

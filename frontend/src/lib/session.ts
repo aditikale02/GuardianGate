@@ -289,7 +289,7 @@ export async function loginWithCredentials(role: UserRole, email: string, passwo
   }
 }
 
-export async function signupAdmin(fullName: string, email: string, password: string) {
+export async function signupAdmin(fullName: string, hostelName: string, email: string, password: string) {
   const response = await fetch(buildApiUrl('/auth/admin/signup'), {
     method: 'POST',
     credentials: 'include',
@@ -302,6 +302,7 @@ export async function signupAdmin(fullName: string, email: string, password: str
     },
     body: JSON.stringify({
       full_name: fullName,
+      hostel_name: hostelName,
       email,
       password,
     }),

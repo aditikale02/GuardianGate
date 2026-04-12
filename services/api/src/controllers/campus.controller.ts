@@ -176,8 +176,9 @@ const toRelativeStatus = (date: Date) => {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 };
 
-export const listEvents = async (_req: AuthRequest, res: Response) => {
+export const listEvents = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.event.findMany({
+    where: req.user ? { creator: { hostel_id: req.user.hostel_id } } : {},
     orderBy: { event_date: "asc" },
     take: 60,
   });
@@ -223,6 +224,7 @@ export const listNotices = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.notice.findMany({
     where: {
       AND: [
+        req.user ? { creator: { hostel_id: req.user.hostel_id } } : {},
         {
           OR: [
             { target_role: null },
@@ -277,8 +279,9 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
   res.status(201).json({ id: created.id });
 };
 
-export const listEmergencies = async (_req: AuthRequest, res: Response) => {
+export const listEmergencies = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.emergencyNotification.findMany({
+    where: req.user ? { creator: { hostel_id: req.user.hostel_id } } : {},
     orderBy: [{ resolved_at: "asc" }, { created_at: "desc" }],
     take: 40,
   });
@@ -340,6 +343,7 @@ export const getAdminPayments = async (req: AuthRequest, res: Response) => {
   const feeTypeRaw = typeof req.query.fee_type === "string" ? req.query.fee_type.trim() : "";
 
   const feeRows = await prisma.feeRecord.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     include: {
       student: {
         include: {
@@ -724,8 +728,9 @@ export const getMyPayments = async (req: AuthRequest, res: Response) => {
   });
 };
 
-export const listMaintenanceRequests = async (_req: AuthRequest, res: Response) => {
+export const listMaintenanceRequests = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.maintenanceRequest.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     include: {
       student: {
         include: {
@@ -800,24 +805,29 @@ export const listMyMaintenanceRequests = async (req: AuthRequest, res: Response)
 };
 
 export const createMaintenanceRequest = async (req: AuthRequest, res: Response) => {
-  const ctx = await ensureStudentWithAllocation(req, res);
-  if (!ctx) return;
-
   const parsed = maintenanceCreateSchema.safeParse(req.body);
   if (toValidationError(res, parsed)) return;
 
+  const data = await ensureStudentWithAllocation(req, res);
+  if (!data) return;
+
+  const { student, allocation } = data;
+
   const created = await prisma.maintenanceRequest.create({
     data: {
-      student_id: ctx.student.id,
-      room_id: ctx.allocation.room_id,
+      student_id: student.id,
+      room_id: allocation.room_id,
       category: toMaintenanceCategory(parsed.data.issue_type),
       description: parsed.data.description,
-      urgency: (parsed.data.priority || "medium").toUpperCase(),
+      urgency: parsed.data.priority ? parsed.data.priority.toUpperCase() : "NORMAL",
       status: TaskStatus.PENDING,
     },
   });
 
-  res.status(201).json({ id: created.id, status: created.status });
+  res.status(201).json({
+    message: "Maintenance request submitted",
+    id: created.id,
+  });
 };
 
 export const updateMaintenanceStatus = async (req: AuthRequest, res: Response) => {
@@ -829,6 +839,15 @@ export const updateMaintenanceStatus = async (req: AuthRequest, res: Response) =
   const parsed = taskStatusSchema.safeParse(req.body);
   if (toValidationError(res, parsed)) return;
 
+  const request = await prisma.maintenanceRequest.findUnique({
+    where: { id: req.params.id },
+  });
+
+  if (!request) {
+    res.status(404).json({ message: "Request not found" });
+    return;
+  }
+
   const updated = await prisma.maintenanceRequest.update({
     where: { id: req.params.id },
     data: {
@@ -837,11 +856,12 @@ export const updateMaintenanceStatus = async (req: AuthRequest, res: Response) =
     },
   });
 
-  res.json({ id: updated.id, status: updated.status });
+  res.json({ success: true, new_status: toUiTaskStatus(updated.status) });
 };
 
-export const listHousekeepingRequests = async (_req: AuthRequest, res: Response) => {
+export const listHousekeepingRequests = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.housekeepingRequest.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     include: {
       student: {
         include: {

@@ -24,6 +24,7 @@ const strongPassword = (value: string) => {
 const AdminSignupPage = () => {
   const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
+  const [hostelName, setHostelName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,9 +46,14 @@ const AdminSignupPage = () => {
       return;
     }
 
+    if (!hostelName.trim()) {
+      setError('Hostel Name is required');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const session = await signupAdmin(fullName.trim(), email.trim(), password);
+      const session = await signupAdmin(fullName.trim(), hostelName.trim(), email.trim(), password);
       navigate(getHomePathForRole(session.role));
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Unable to sign up admin'));
@@ -79,6 +85,11 @@ const AdminSignupPage = () => {
             <div className="space-y-2">
               <Label htmlFor="admin-signup-name">Full Name</Label>
               <Input id="admin-signup-name" value={fullName} onChange={(event) => setFullName(event.target.value)} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="admin-signup-hostel">Hostel Name</Label>
+              <Input id="admin-signup-hostel" value={hostelName} onChange={(event) => setHostelName(event.target.value)} required />
             </div>
 
             <div className="space-y-2">

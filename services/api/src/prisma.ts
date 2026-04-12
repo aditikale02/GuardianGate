@@ -10,12 +10,13 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL or SUPABASE_DATABASE_URL is not set");
 }
 
+process.env.DATABASE_URL = databaseUrl;
+const isSupabase = databaseUrl.includes("supabase.com") || databaseUrl.includes("pooler.supabase.com");
+
 const pool = new Pool({
   connectionString: databaseUrl,
-  max: isServerless ? 1 : 3,
-  idleTimeoutMillis: 10_000,
-  connectionTimeoutMillis: 30_000,
-  keepAlive: true,
+  max: 10,
+  ssl: { rejectUnauthorized: false },
 });
 const adapter = new PrismaPg(pool);
 

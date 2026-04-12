@@ -227,8 +227,9 @@ export const listMyNightLeaveRequests = async (req: AuthRequest, res: Response) 
   });
 };
 
-export const listNightLeaveRequests = async (_req: AuthRequest, res: Response) => {
+export const listNightLeaveRequests = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.nightLeaveRequest.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     orderBy: { created_at: "desc" },
     include: {
       student: {
@@ -337,8 +338,9 @@ export const listMyGuestRequests = async (req: AuthRequest, res: Response) => {
   });
 };
 
-export const listGuestRequests = async (_req: AuthRequest, res: Response) => {
+export const listGuestRequests = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.guestRequest.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     orderBy: { created_at: "desc" },
     include: {
       student: {
@@ -440,8 +442,9 @@ export const listMyParcels = async (req: AuthRequest, res: Response) => {
   });
 };
 
-export const listParcels = async (_req: AuthRequest, res: Response) => {
+export const listParcels = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.parcelRecord.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     orderBy: { received_at: "desc" },
     include: {
       student: {
@@ -534,8 +537,9 @@ export const listMyMedicalRequests = async (req: AuthRequest, res: Response) => 
   });
 };
 
-export const listMedicalRequests = async (_req: AuthRequest, res: Response) => {
+export const listMedicalRequests = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.medicalRequest.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     orderBy: { created_at: "desc" },
     include: {
       student: {
@@ -656,8 +660,9 @@ export const listMySuggestions = async (req: AuthRequest, res: Response) => {
   });
 };
 
-export const listSuggestions = async (_req: AuthRequest, res: Response) => {
+export const listSuggestions = async (req: AuthRequest, res: Response) => {
   const rows = await prisma.suggestion.findMany({
+    where: req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {},
     orderBy: { created_at: "desc" },
     include: {
       student: {

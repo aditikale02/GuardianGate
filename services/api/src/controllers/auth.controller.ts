@@ -225,6 +225,7 @@ type RefreshPayload = {
 
 const adminSignupSchema = z.object({
   full_name: z.string().min(2),
+  hostel_name: z.string().min(2),
   email: z.string().email(),
   password: z
     .string()
@@ -287,16 +288,25 @@ export const adminSignup = async (
     const passwordHash = await bcrypt.hash(parsed.data.password, 10);
     const username = await generateUniqueUsername(parsed.data.email.split("@")[0]);
 
-    const user = await prisma.user.create({
-      data: {
-        full_name: parsed.data.full_name,
-        email: parsed.data.email,
-        username,
-        password_hash: passwordHash,
-        role: Role.ADMIN,
-        is_active: true,
-        first_login: false,
-      },
+    const user = await prisma.$transaction(async (tx) => {
+      const newHostel = await tx.hostel.create({
+        data: {
+          name: parsed.data.hostel_name,
+        },
+      });
+
+      return await tx.user.create({
+        data: {
+          full_name: parsed.data.full_name,
+          email: parsed.data.email,
+          username,
+          password_hash: passwordHash,
+          role: Role.ADMIN,
+          is_active: true,
+          first_login: false,
+          hostel_id: newHostel.id,
+        },
+      });
     });
 
     const accessToken = generateAccessToken(user);

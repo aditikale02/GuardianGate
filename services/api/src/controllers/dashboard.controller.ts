@@ -89,8 +89,9 @@ const parseAttendanceStatusValue = (value: unknown): AttendanceStatus | null => 
   return null;
 };
 
-export const getAttendanceFloorOptions = async (_req: Request, res: Response) => {
+export const getAttendanceFloorOptions = async (req: AuthRequest, res: Response) => {
   const blocks = await prisma.hostelBlock.findMany({
+    where: req.user ? { hostel_id: req.user.hostel_id } : {},
     orderBy: { name: "asc" },
     include: {
       floors: {
@@ -117,7 +118,7 @@ export const getAttendanceFloorOptions = async (_req: Request, res: Response) =>
   });
 };
 
-export const getFloorAttendance = async (req: Request, res: Response) => {
+export const getFloorAttendance = async (req: AuthRequest, res: Response) => {
   const hostelIdRaw = req.query.hostel_id;
   const floorRaw = req.query.floor;
   const dateRaw = req.query.date;
@@ -146,10 +147,10 @@ export const getFloorAttendance = async (req: Request, res: Response) => {
 
   const block = await prisma.hostelBlock.findUnique({
     where: { id: hostelId },
-    select: { id: true, name: true },
+    select: { id: true, name: true, hostel_id: true },
   });
 
-  if (!block) {
+  if (!block || (req.user && block.hostel_id !== req.user.hostel_id)) {
     res.status(404).json({ message: "Hostel not found" });
     return;
   }
@@ -409,7 +410,10 @@ export const saveFloorAttendance = async (req: AuthRequest, res: Response) => {
   });
 };
 
-export const getOverview = async (_req: Request, res: Response) => {
+export const getOverview = async (req: AuthRequest, res: Response) => {
+  const baseStudentWhere = req.user ? { user: { hostel_id: req.user.hostel_id } } : {};
+  const baseLogWhere = req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {};
+  
   const [
     totalStudents,
     currentlyIn,
@@ -419,10 +423,11 @@ export const getOverview = async (_req: Request, res: Response) => {
     recentInvalidScans,
   ] =
     await prisma.$transaction([
-      prisma.student.count(),
-      prisma.student.count({ where: { current_status: EntryAction.ENTRY } }),
-      prisma.student.count({ where: { current_status: EntryAction.EXIT } }),
+      prisma.student.count({ where: baseStudentWhere }),
+      prisma.student.count({ where: { ...baseStudentWhere, current_status: EntryAction.ENTRY } }),
+      prisma.student.count({ where: { ...baseStudentWhere, current_status: EntryAction.EXIT } }),
       prisma.entryExitLog.findMany({
+        where: baseLogWhere,
         take: 20,
         orderBy: { timestamp: "desc" },
         include: {
@@ -438,9 +443,9 @@ export const getOverview = async (_req: Request, res: Response) => {
           },
         },
       }),
-      prisma.entryExitLog.count({ where: invalidScanWhere }),
+      prisma.entryExitLog.count({ where: { ...baseLogWhere, ...invalidScanWhere } }),
       prisma.entryExitLog.findMany({
-        where: invalidScanWhere,
+        where: { ...baseLogWhere, ...invalidScanWhere },
         take: 5,
         orderBy: { timestamp: "desc" },
         include: {
@@ -487,7 +492,7 @@ export const getOverview = async (_req: Request, res: Response) => {
   });
 };
 
-export const getAttendance = async (req: Request, res: Response) => {
+export const getAttendance = async (req: AuthRequest, res: Response) => {
   const selectedDate = parseIsoDateOnly(req.query.date) ?? new Date();
   const dayStart = new Date(Date.UTC(
     selectedDate.getUTCFullYear(),
@@ -511,6 +516,7 @@ export const getAttendance = async (req: Request, res: Response) => {
 
   const attendanceRows = await prisma.attendanceRecord.findMany({
     where: {
+      ...(req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {}),
       attendance_date: {
         gte: dayStart,
         lt: nextDay,
@@ -570,7 +576,7 @@ export const getAttendance = async (req: Request, res: Response) => {
   });
 };
 
-export const getLogs = async (req: Request, res: Response) => {
+export const getLogs = async (req: AuthRequest, res: Response) => {
   const page = parsePositiveInt(req.query.page, 1);
   const pageSize = Math.min(parsePositiveInt(req.query.page_size, 20), 100);
   const skip = (page - 1) * pageSize;
@@ -602,7 +608,7 @@ export const getLogs = async (req: Request, res: Response) => {
   const isLate = parseBooleanFlag(req.query.late_status);
   const isFlagged = parseBooleanFlag(req.query.flagged_status);
 
-  const where: any = {};
+  const where: any = req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {};
 
   if (direction) {
     where.action_type = direction;
@@ -675,6 +681,8 @@ export const getLogs = async (req: Request, res: Response) => {
     Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 23, 59, 59, 999),
   );
 
+  const baseLogWhere = req.user ? { student: { user: { hostel_id: req.user.hostel_id } } } : {};
+
   const [
     total,
     logs,
@@ -694,12 +702,13 @@ export const getLogs = async (req: Request, res: Response) => {
       orderBy: { timestamp: "desc" },
     }),
     prisma.entryExitLog.findMany({
-      where: { gate_id: { not: null } },
+      where: { ...baseLogWhere, gate_id: { not: null } },
       distinct: ["gate_id"],
       select: { gate_id: true },
     }),
     prisma.entryExitLog.count({
       where: {
+        ...baseLogWhere,
         scan_date: { gte: todayStart, lte: todayEnd },
         action_type: EntryAction.ENTRY,
         validation_status: ScanValidationStatus.SUCCESS,
@@ -707,6 +716,7 @@ export const getLogs = async (req: Request, res: Response) => {
     }),
     prisma.entryExitLog.count({
       where: {
+        ...baseLogWhere,
         scan_date: { gte: todayStart, lte: todayEnd },
         action_type: EntryAction.EXIT,
         validation_status: ScanValidationStatus.SUCCESS,
@@ -714,6 +724,7 @@ export const getLogs = async (req: Request, res: Response) => {
     }),
     prisma.entryExitLog.count({
       where: {
+        ...baseLogWhere,
         scan_date: { gte: todayStart, lte: todayEnd },
         action_type: EntryAction.ENTRY,
         is_late: true,
@@ -722,12 +733,14 @@ export const getLogs = async (req: Request, res: Response) => {
     }),
     prisma.entryExitLog.count({
       where: {
+        ...baseLogWhere,
         scan_date: { gte: todayStart, lte: todayEnd },
         is_flagged: true,
       },
     }),
     prisma.entryExitLog.findMany({
       where: {
+        ...baseLogWhere,
         scan_date: { gte: todayStart, lte: todayEnd },
       },
       take: 15,
