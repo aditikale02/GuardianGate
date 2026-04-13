@@ -25,6 +25,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@supabase/supabase-js": "^2.103.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/compression": "^1.8.1",
     "@types/cookie-parser": "^1.4.10",
@@ -44,8 +45,8 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.4",
     "pg": "^8.20.0",
-    "pusher": "^5.2.0",
     "prisma": "^7.5.0",
+    "pusher": "^5.2.0",
     "tsconfig-paths": "^4.2.0",
     "zod": "^3.22.4"
   },
