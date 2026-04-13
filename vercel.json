@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run -w frontend build && npm run -w services/api build",
+  "buildCommand": "npm run build",
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install",
   "functions": {
